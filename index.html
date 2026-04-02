@@ -3,17 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebRTC Screen Caster - AutoSync</title>
+    <title>WebRTC Screen Caster - Interativo</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PeerJS: Biblioteca para abstração do WebRTC e Sinalização via Cloud Server gratuito -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        /* Estilos para touch e fullscreen */
         button:active { transform: scale(0.98); }
         input[type="number"]::-webkit-inner-spin-button, 
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         
-        #videoContainer:fullscreen {
+        #videoContainer:fullscreen, #videoContainer:-webkit-full-screen {
             background-color: black;
             width: 100vw;
             height: 100vh;
@@ -21,24 +19,33 @@
             align-items: center;
             justify-content: center;
         }
-        #videoContainer:-webkit-full-screen {
-            background-color: black;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+
+        /* Cursor virtual para simular o recebimento do mouse do tablet */
+        #virtualPointer {
+            position: fixed;
+            width: 15px;
+            height: 15px;
+            background-color: red;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: top 0.05s linear, left 0.05s linear;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
         }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans relative">
 
-    <header class="bg-slate-800 p-4 shadow-md border-b border-slate-700">
-        <h1 class="text-2xl font-bold text-center text-blue-400">Monitor Estendido Web</h1>
-        <p class="text-center text-sm text-slate-400 mt-1">Conexão Automática via PIN (Powered by PeerJS)</p>
+    <!-- Cursor Virtual: Exibido apenas no Notebook -->
+    <div id="virtualPointer" class="hidden"></div>
+
+    <header class="bg-slate-800 p-4 shadow-md border-b border-slate-700 z-10 relative">
+        <h1 class="text-2xl font-bold text-center text-blue-400">Monitor Estendido Interativo</h1>
+        <p class="text-center text-sm text-slate-400 mt-1">Vídeo, Áudio e Input P2P (Powered by PeerJS)</p>
     </header>
 
-    <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-8">
+    <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-8 z-10 relative">
         
         <!-- PAINEL DO NOTEBOOK (TRANSMISSOR) -->
         <section class="flex-1 bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700">
@@ -48,17 +55,17 @@
             </h2>
             
             <div class="space-y-6">
-                <p class="text-sm text-slate-300">Inicie a transmissão para gerar o código da sala.</p>
+                <p class="text-sm text-slate-300">Compartilhe tela + áudio e gere o código.</p>
                 
                 <button id="btnStartCapture" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-4 rounded-lg transition-colors text-lg shadow-md">
                     Capturar Tela e Criar Sala
                 </button>
 
-                <!-- Área do PIN (Exibida após iniciar captura) -->
                 <div id="pinDisplayArea" class="hidden flex flex-col items-center justify-center p-6 bg-slate-900 rounded-lg border border-slate-700">
                     <span class="text-slate-400 text-sm mb-2">Digite este PIN no Tablet:</span>
-                    <div id="roomPinDisplay" class="text-5xl font-mono font-bold text-emerald-400 tracking-widest">
-                        00000
+                    <div id="roomPinDisplay" class="text-5xl font-mono font-bold text-emerald-400 tracking-widest">00000</div>
+                    <div id="inputLog" class="mt-4 w-full h-20 bg-black rounded p-2 text-xs text-green-500 overflow-y-auto font-mono">
+                        Aguardando inputs do tablet...
                     </div>
                 </div>
             </div>
@@ -75,7 +82,7 @@
             </h2>
 
             <div class="space-y-4 flex-1 flex flex-col">
-                <p class="text-sm text-slate-300">Conecte-se à tela digitando o PIN gerado pelo Notebook.</p>
+                <p class="text-sm text-slate-300">Conecte-se para assistir e interagir.</p>
 
                 <div class="flex gap-2">
                     <input type="number" id="pinInput" class="flex-1 bg-slate-900 border border-slate-600 rounded-lg p-4 text-2xl text-center text-white font-mono tracking-widest focus:outline-none focus:border-purple-500 placeholder-slate-600" placeholder="PIN" maxlength="5">
@@ -86,11 +93,12 @@
                 
                 <div id="receiverStatus" class="text-sm text-center text-slate-400">Pronto para conectar.</div>
 
-                <!-- Video Player Container -->
-                <div id="videoContainer" class="mt-4 flex-1 bg-black rounded-lg overflow-hidden border border-slate-700 relative flex items-center justify-center min-h-[250px]">
+                <!-- Video Player Container (Área de Interação) -->
+                <!-- tabindex="0" permite que a div receba foco para capturar eventos de teclado -->
+                <div id="videoContainer" tabindex="0" class="mt-4 flex-1 bg-black rounded-lg overflow-hidden border border-slate-700 relative flex items-center justify-center min-h-[250px] outline-none">
                     <span id="videoPlaceholder" class="text-slate-500 text-sm absolute z-10 pointer-events-none">A tela estendida aparecerá aqui</span>
                     
-                    <video id="remoteVideo" autoplay playsinline class="w-full h-full object-contain hidden z-0 cursor-pointer" title="Duplo clique para Tela Cheia"></video>
+                    <video id="remoteVideo" autoplay playsinline class="w-full h-full object-contain hidden z-0"></video>
                     
                     <!-- Botão de Tela Cheia -->
                     <button id="btnFullscreen" class="hidden absolute bottom-4 right-4 bg-slate-800/80 hover:bg-slate-700 text-white p-3 rounded-lg backdrop-blur-sm transition-colors z-20 shadow-lg border border-slate-600" title="Alternar Tela Cheia">
@@ -105,33 +113,34 @@
     </main>
 
     <script>
-        /**
-         * Singleton para gerenciar a aplicação.
-         * Utiliza o PeerJS para abstrair a complexidade de sinalização SDP/ICE do WebRTC.
-         */
         class ScreenCasterApp {
             constructor() {
-                // Referências DOM - Transmissor
+                // DOM Transmissor
                 this.btnStartCapture = document.getElementById('btnStartCapture');
                 this.pinDisplayArea = document.getElementById('pinDisplayArea');
                 this.roomPinDisplay = document.getElementById('roomPinDisplay');
                 this.transmitterStatus = document.getElementById('transmitterStatus');
+                this.inputLog = document.getElementById('inputLog');
+                this.virtualPointer = document.getElementById('virtualPointer');
 
-                // Referências DOM - Receptor
+                // DOM Receptor
                 this.pinInput = document.getElementById('pinInput');
                 this.btnConnect = document.getElementById('btnConnect');
                 this.receiverStatus = document.getElementById('receiverStatus');
                 this.remoteVideo = document.getElementById('remoteVideo');
                 this.videoPlaceholder = document.getElementById('videoPlaceholder');
                 
-                // Referências DOM - Fullscreen
+                // DOM Fullscreen e Interação
                 this.videoContainer = document.getElementById('videoContainer');
                 this.btnFullscreen = document.getElementById('btnFullscreen');
 
                 // Estado Interno
                 this.peer = null;
+                this.dataConnection = null; // Canal P2P para Mouse/Teclado
                 this.localStream = null;
-                this.namespace = 'scrcast-v1-'; // Prefixo para evitar colisões globais no PeerJS
+                this.namespace = 'scrcast-v2-'; 
+                
+                this.role = null; // 'transmitter' ou 'receiver'
 
                 this.bindEvents();
             }
@@ -140,7 +149,6 @@
                 this.btnStartCapture.addEventListener('click', () => this.initTransmitter());
                 this.btnConnect.addEventListener('click', () => this.initReceiver());
                 
-                // UX de input (acionar conectar ao dar Enter e limitar a 5 digitos)
                 this.pinInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.initReceiver();
                 });
@@ -148,9 +156,7 @@
                     if(e.target.value.length > 5) e.target.value = e.target.value.slice(0,5);
                 });
 
-                // Fullscreen Events
                 this.btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
-                this.remoteVideo.addEventListener('dblclick', () => this.toggleFullscreen());
             }
 
             updateStatus(element, msg, isError = false) {
@@ -159,109 +165,132 @@
             }
 
             // ==========================================
-            // FLUXO DO TRANSMISSOR (NOTEBOOK)
+            // TRANSMISSOR: NOTEBOOK (Recebe Inputs)
             // ==========================================
             async initTransmitter() {
+                this.role = 'transmitter';
                 try {
-                    // 1. Captura da Tela (Requer HTTPS/Localhost)
+                    // OBRIGATÓRIO: audio: true para capturar o som do sistema.
                     this.localStream = await navigator.mediaDevices.getDisplayMedia({
                         video: { cursor: "always", frameRate: 60 },
-                        audio: false // Apenas vídeo para otimizar latência
+                        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
                     });
 
-                    // Caso o usuário clique no botão nativo "Parar Compartilhamento"
                     this.localStream.getVideoTracks()[0].onended = () => {
-                        this.updateStatus(this.transmitterStatus, 'Transmissão encerrada pelo usuário.', true);
+                        this.updateStatus(this.transmitterStatus, 'Transmissão encerrada.', true);
                         if(this.peer) this.peer.destroy();
                         this.pinDisplayArea.classList.add('hidden');
                         this.btnStartCapture.classList.remove('hidden');
+                        this.virtualPointer.classList.add('hidden');
                     };
 
-                    // 2. Gera PIN aleatório de 5 dígitos
                     const pin = Math.floor(10000 + Math.random() * 90000);
                     const roomId = `${this.namespace}${pin}`;
 
-                    // 3. Inicializa Conexão no Servidor de Sinalização (PeerJS Cloud)
-                    this.updateStatus(this.transmitterStatus, 'Criando sala no servidor de sinalização...');
+                    this.updateStatus(this.transmitterStatus, 'Criando sala no servidor...');
                     this.peer = new Peer(roomId, { debug: 2 });
 
                     this.peer.on('open', (id) => {
-                        // Sala criada com sucesso
                         this.btnStartCapture.classList.add('hidden');
                         this.pinDisplayArea.classList.remove('hidden');
                         this.roomPinDisplay.textContent = pin;
-                        this.updateStatus(this.transmitterStatus, 'Sala criada! Aguardando tablet se conectar...');
+                        this.updateStatus(this.transmitterStatus, 'Sala criada! Aguardando tablet...');
                     });
 
                     this.peer.on('error', (err) => {
-                        console.error('PeerJS Error:', err);
                         this.updateStatus(this.transmitterStatus, `Erro de rede: ${err.type}`, true);
                     });
 
-                    // 4. Aguarda Tablet se conectar via Canal de Dados
+                    // Tablet conectou via DataChannel
                     this.peer.on('connection', (conn) => {
-                        this.updateStatus(this.transmitterStatus, 'Tablet conectado! Estabelecendo túnel de vídeo...', false);
+                        this.dataConnection = conn;
+                        this.updateStatus(this.transmitterStatus, 'Tablet conectado! Transmitindo A/V...', false);
                         
+                        // Ouve os dados de Mouse/Teclado do tablet
+                        conn.on('data', (data) => this.handleRemoteInput(data));
+
                         conn.on('open', () => {
-                            // Quando o tablet der "Oi", nós ligamos para ele com o Vídeo
+                            // Envia stream de áudio e vídeo
                             const call = this.peer.call(conn.peer, this.localStream);
-                            
-                            call.on('error', (err) => {
-                                this.updateStatus(this.transmitterStatus, 'Erro na transmissão de vídeo.', true);
-                            });
+                            call.on('error', () => this.updateStatus(this.transmitterStatus, 'Erro no stream.', true));
                         });
                     });
 
                 } catch (error) {
-                    console.error("Erro na captura:", error);
-                    this.updateStatus(this.transmitterStatus, 'Permissão negada ou ambiente sem HTTPS.', true);
+                    console.error("Erro captura:", error);
+                    this.updateStatus(this.transmitterStatus, 'Permissão negada. Marque "Compartilhar áudio do sistema".', true);
+                }
+            }
+
+            logInput(msg) {
+                const p = document.createElement('div');
+                p.textContent = `> ${msg}`;
+                this.inputLog.appendChild(p);
+                this.inputLog.scrollTop = this.inputLog.scrollHeight;
+            }
+
+            // Simulação Visual no Notebook do que o Tablet está fazendo
+            handleRemoteInput(payload) {
+                try {
+                    const event = JSON.parse(payload);
+                    
+                    if (event.type === 'pointer') {
+                        this.virtualPointer.classList.remove('hidden');
+                        // Transforma coordenadas relativas (0.0 a 1.0) para absolutas da aba atual
+                        const x = event.x * window.innerWidth;
+                        const y = event.y * window.innerHeight;
+                        this.virtualPointer.style.left = `${x}px`;
+                        this.virtualPointer.style.top = `${y}px`;
+                        
+                        if(event.action === 'click') {
+                            this.virtualPointer.style.backgroundColor = 'yellow';
+                            setTimeout(() => this.virtualPointer.style.backgroundColor = 'red', 150);
+                            this.logInput(`CLICK: x:${event.x.toFixed(2)}, y:${event.y.toFixed(2)}`);
+                        }
+                    } 
+                    else if (event.type === 'key') {
+                        this.logInput(`TECLA: ${event.key}`);
+                    }
+
+                } catch (e) {
+                    console.error("Erro ao parsear input", e);
                 }
             }
 
             // ==========================================
-            // FLUXO DO RECEPTOR (TABLET)
+            // RECEPTOR: TABLET (Envia Inputs e Toca Áudio)
             // ==========================================
             initReceiver() {
+                this.role = 'receiver';
                 const pin = this.pinInput.value.trim();
-                if (pin.length !== 5) {
-                    this.updateStatus(this.receiverStatus, 'Por favor, digite o PIN de 5 dígitos.', true);
-                    return;
-                }
+                if (pin.length !== 5) return;
 
                 this.btnConnect.disabled = true;
-                this.btnConnect.classList.add('opacity-50', 'cursor-not-allowed');
-                this.updateStatus(this.receiverStatus, 'Conectando ao servidor...');
+                this.btnConnect.classList.add('opacity-50');
+                this.updateStatus(this.receiverStatus, 'Conectando...');
 
-                // 1. Inicializa o cliente sem ID específico (o servidor gera um ID aleatório)
                 this.peer = new Peer({ debug: 2 });
 
                 this.peer.on('open', (myId) => {
-                    this.updateStatus(this.receiverStatus, 'Buscando sala no servidor...');
-                    
                     const roomId = `${this.namespace}${pin}`;
+                    this.dataConnection = this.peer.connect(roomId);
                     
-                    // 2. Conecta ao Transmissor via Canal de Dados para avisar que chegamos
-                    const conn = this.peer.connect(roomId);
-                    
-                    conn.on('open', () => {
-                        this.updateStatus(this.receiverStatus, 'Handshake concluído. Recebendo vídeo...', false);
+                    this.dataConnection.on('open', () => {
+                        this.updateStatus(this.receiverStatus, 'Sincronizado. Recebendo A/V...', false);
+                        this.bindInteractionEvents(); // Ativa a captura de inputs
                     });
 
-                    conn.on('error', (err) => {
-                         this.updateStatus(this.receiverStatus, 'Falha ao conectar na sala.', true);
-                         this.resetReceiverBtn();
+                    this.dataConnection.on('error', () => {
+                         this.updateStatus(this.receiverStatus, 'Falha de conexão.', true);
+                         this.btnConnect.disabled = false;
+                         this.btnConnect.classList.remove('opacity-50');
                     });
                 });
 
-                // 3. Aguarda o Transmissor ligar enviando o Stream de Vídeo
                 this.peer.on('call', (call) => {
-                    // Atende a chamada sem enviar stream (recebimento unidirecional)
                     call.answer(); 
-
                     call.on('stream', (remoteStream) => {
-                        this.updateStatus(this.receiverStatus, 'Transmissão ativa e em tempo real!', false);
-                        
-                        // Renderiza o vídeo na tela
+                        this.updateStatus(this.receiverStatus, 'Conectado! Áudio e Vídeo rodando.', false);
                         this.videoPlaceholder.classList.add('hidden');
                         this.remoteVideo.classList.remove('hidden');
                         this.btnFullscreen.classList.remove('hidden');
@@ -269,58 +298,65 @@
                         if (this.remoteVideo.srcObject !== remoteStream) {
                             this.remoteVideo.srcObject = remoteStream;
                         }
-                    });
-
-                    call.on('close', () => {
-                        this.updateStatus(this.receiverStatus, 'A transmissão foi encerrada pelo notebook.', true);
-                        this.remoteVideo.classList.add('hidden');
-                        this.btnFullscreen.classList.add('hidden');
-                        this.videoPlaceholder.classList.remove('hidden');
-                        this.resetReceiverBtn();
+                        
+                        // Garante que o container tenha foco para capturar teclado no tablet
+                        this.videoContainer.focus();
                     });
                 });
+            }
 
-                this.peer.on('error', (err) => {
-                    console.error('PeerJS Error:', err);
-                    if(err.type === 'peer-unavailable') {
-                        this.updateStatus(this.receiverStatus, 'PIN inválido ou sala não encontrada.', true);
-                    } else {
-                        this.updateStatus(this.receiverStatus, `Erro de conexão: ${err.type}`, true);
+            // Captura eventos do Tablet e envia para o Notebook via DataChannel
+            bindInteractionEvents() {
+                if(this.role !== 'receiver') return;
+
+                const sendPointerEvent = (e, action = 'move') => {
+                    if (!this.dataConnection || !this.dataConnection.open) return;
+                    e.preventDefault(); // Evita scroll ao arrastar no video
+                    
+                    // Suporte a Mouse e Touch
+                    let clientX = e.clientX;
+                    let clientY = e.clientY;
+                    
+                    if (e.touches && e.touches.length > 0) {
+                        clientX = e.touches[0].clientX;
+                        clientY = e.touches[0].clientY;
                     }
-                    this.resetReceiverBtn();
+
+                    const rect = this.videoContainer.getBoundingClientRect();
+                    // Normaliza as coordenadas entre 0.0 e 1.0
+                    const x = (clientX - rect.left) / rect.width;
+                    const y = (clientY - rect.top) / rect.height;
+
+                    this.dataConnection.send(JSON.stringify({ type: 'pointer', action, x, y }));
+                };
+
+                // Mouse
+                this.videoContainer.addEventListener('mousemove', (e) => sendPointerEvent(e, 'move'));
+                this.videoContainer.addEventListener('mousedown', (e) => sendPointerEvent(e, 'click'));
+                
+                // Touch (Tablet/Smartphone)
+                this.videoContainer.addEventListener('touchmove', (e) => sendPointerEvent(e, 'move'), {passive: false});
+                this.videoContainer.addEventListener('touchstart', (e) => sendPointerEvent(e, 'click'), {passive: false});
+
+                // Teclado
+                this.videoContainer.addEventListener('keydown', (e) => {
+                    if (!this.dataConnection || !this.dataConnection.open) return;
+                    e.preventDefault(); // Previne barra de espaço rolar a página
+                    this.dataConnection.send(JSON.stringify({ type: 'key', key: e.key, code: e.code }));
                 });
             }
 
-            resetReceiverBtn() {
-                this.btnConnect.disabled = false;
-                this.btnConnect.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-
-            // ==========================================
-            // API DE TELA CHEIA (FULLSCREEN)
-            // ==========================================
             toggleFullscreen() {
                 if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                    if (this.videoContainer.requestFullscreen) {
-                        this.videoContainer.requestFullscreen();
-                    } else if (this.videoContainer.webkitRequestFullscreen) {
-                        this.videoContainer.webkitRequestFullscreen(); // Safari/iPad
-                    } else if (this.videoContainer.msRequestFullscreen) {
-                        this.videoContainer.msRequestFullscreen(); // IE11
-                    }
+                    if (this.videoContainer.requestFullscreen) this.videoContainer.requestFullscreen();
+                    else if (this.videoContainer.webkitRequestFullscreen) this.videoContainer.webkitRequestFullscreen();
                 } else {
-                    if (document.exitFullscreen) {
-                        document.exitFullscreen();
-                    } else if (document.webkitExitFullscreen) {
-                        document.webkitExitFullscreen();
-                    } else if (document.msExitFullscreen) {
-                        document.msExitFullscreen();
-                    }
+                    if (document.exitFullscreen) document.exitFullscreen();
+                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
                 }
             }
         }
 
-        // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
             new ScreenCasterApp();
         });
