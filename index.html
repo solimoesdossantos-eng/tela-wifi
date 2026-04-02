@@ -3,19 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebRTC Screen Caster</title>
+    <title>WebRTC Screen Caster - AutoSync</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PeerJS: Biblioteca para abstração do WebRTC e Sinalização via Cloud Server gratuito -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        /* Estilos personalizados para garantir usabilidade em touch (Tablet) */
+        /* Estilos para touch e fullscreen */
         button:active { transform: scale(0.98); }
-        textarea { resize: none; }
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        #videoContainer:fullscreen {
+            background-color: black;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #videoContainer:-webkit-full-screen {
+            background-color: black;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
 
     <header class="bg-slate-800 p-4 shadow-md border-b border-slate-700">
-        <h1 class="text-2xl font-bold text-center text-blue-400">WebRTC Screen Link</h1>
-        <p class="text-center text-sm text-slate-400 mt-1">Conexão P2P Direta sem Servidor</p>
+        <h1 class="text-2xl font-bold text-center text-blue-400">Monitor Estendido Web</h1>
+        <p class="text-center text-sm text-slate-400 mt-1">Conexão Automática via PIN (Powered by PeerJS)</p>
     </header>
 
     <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-8">
@@ -27,31 +47,23 @@
                 1. Notebook (Transmissor)
             </h2>
             
-            <div class="space-y-4">
-                <p class="text-sm text-slate-300">Capture sua tela e gere um token de conexão para o tablet.</p>
+            <div class="space-y-6">
+                <p class="text-sm text-slate-300">Inicie a transmissão para gerar o código da sala.</p>
                 
-                <button id="btnStartCapture" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
-                    Capturar Tela e Gerar Token
+                <button id="btnStartCapture" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-4 rounded-lg transition-colors text-lg shadow-md">
+                    Capturar Tela e Criar Sala
                 </button>
 
-                <div id="notebookStep2" class="hidden space-y-4 mt-4">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Copie este Token e envie para o Tablet:</label>
-                        <textarea id="offerToken" readonly class="w-full h-24 bg-slate-900 border border-slate-600 rounded-md p-2 text-xs text-green-400 focus:outline-none focus:border-blue-500 cursor-text" onclick="this.select()"></textarea>
+                <!-- Área do PIN (Exibida após iniciar captura) -->
+                <div id="pinDisplayArea" class="hidden flex flex-col items-center justify-center p-6 bg-slate-900 rounded-lg border border-slate-700">
+                    <span class="text-slate-400 text-sm mb-2">Digite este PIN no Tablet:</span>
+                    <div id="roomPinDisplay" class="text-5xl font-mono font-bold text-emerald-400 tracking-widest">
+                        00000
                     </div>
-                    
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Cole aqui o Token de Resposta do Tablet:</label>
-                        <textarea id="answerTokenInput" class="w-full h-24 bg-slate-900 border border-slate-600 rounded-md p-2 text-xs text-white focus:outline-none focus:border-blue-500" placeholder="Cole o token recebido do tablet aqui..."></textarea>
-                    </div>
-
-                    <button id="btnConnectTransmitter" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
-                        Iniciar Transmissão
-                    </button>
                 </div>
             </div>
             
-            <div id="transmitterStatus" class="mt-4 text-sm text-slate-400">Aguardando ação...</div>
+            <div id="transmitterStatus" class="mt-6 text-sm text-center text-slate-400">Aguardando início...</div>
         </section>
 
 
@@ -62,29 +74,30 @@
                 2. Tablet (Receptor)
             </h2>
 
-            <div class="space-y-4 flex-1">
-                <p class="text-sm text-slate-300">Cole o token do Notebook para gerar sua resposta de conexão.</p>
+            <div class="space-y-4 flex-1 flex flex-col">
+                <p class="text-sm text-slate-300">Conecte-se à tela digitando o PIN gerado pelo Notebook.</p>
 
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Cole o Token do Notebook aqui:</label>
-                    <textarea id="offerTokenInput" class="w-full h-24 bg-slate-900 border border-slate-600 rounded-md p-2 text-xs text-white focus:outline-none focus:border-purple-500" placeholder="Cole o token do transmissor aqui..."></textarea>
+                <div class="flex gap-2">
+                    <input type="number" id="pinInput" class="flex-1 bg-slate-900 border border-slate-600 rounded-lg p-4 text-2xl text-center text-white font-mono tracking-widest focus:outline-none focus:border-purple-500 placeholder-slate-600" placeholder="PIN" maxlength="5">
+                    <button id="btnConnect" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 px-6 rounded-lg transition-colors shadow-md">
+                        Conectar
+                    </button>
                 </div>
+                
+                <div id="receiverStatus" class="text-sm text-center text-slate-400">Pronto para conectar.</div>
 
-                <button id="btnGenerateAnswer" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
-                    Gerar Token de Resposta
-                </button>
-
-                <div id="tabletStep2" class="hidden space-y-4 mt-4">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Copie esta Resposta e devolva ao Notebook:</label>
-                        <textarea id="answerToken" readonly class="w-full h-24 bg-slate-900 border border-slate-600 rounded-md p-2 text-xs text-green-400 focus:outline-none focus:border-purple-500 cursor-text" onclick="this.select()"></textarea>
-                    </div>
-                </div>
-
-                <!-- Video Player -->
-                <div class="mt-6 flex-1 bg-black rounded-lg overflow-hidden border border-slate-700 relative flex items-center justify-center min-h-[200px]">
-                    <span id="videoPlaceholder" class="text-slate-500 text-sm absolute">A tela aparecerá aqui</span>
-                    <video id="remoteVideo" autoplay playsinline class="w-full h-full object-contain hidden"></video>
+                <!-- Video Player Container -->
+                <div id="videoContainer" class="mt-4 flex-1 bg-black rounded-lg overflow-hidden border border-slate-700 relative flex items-center justify-center min-h-[250px]">
+                    <span id="videoPlaceholder" class="text-slate-500 text-sm absolute z-10 pointer-events-none">A tela estendida aparecerá aqui</span>
+                    
+                    <video id="remoteVideo" autoplay playsinline class="w-full h-full object-contain hidden z-0 cursor-pointer" title="Duplo clique para Tela Cheia"></video>
+                    
+                    <!-- Botão de Tela Cheia -->
+                    <button id="btnFullscreen" class="hidden absolute bottom-4 right-4 bg-slate-800/80 hover:bg-slate-700 text-white p-3 rounded-lg backdrop-blur-sm transition-colors z-20 shadow-lg border border-slate-600" title="Alternar Tela Cheia">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </section>
@@ -93,159 +106,221 @@
 
     <script>
         /**
-         * Singleton para gerenciar o estado da conexão WebRTC.
-         * Segue princípios de encapsulamento para isolar a complexidade do RTCPeerConnection.
+         * Singleton para gerenciar a aplicação.
+         * Utiliza o PeerJS para abstrair a complexidade de sinalização SDP/ICE do WebRTC.
          */
         class ScreenCasterApp {
             constructor() {
-                // Configuração STUN gratuita do Google para descoberta de IP público/NAT
-                this.rtcConfig = {
-                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-                };
-                
-                this.peerConnection = null;
-                this.localStream = null;
-
-                // DOM Elements - Transmitter
+                // Referências DOM - Transmissor
                 this.btnStartCapture = document.getElementById('btnStartCapture');
-                this.notebookStep2 = document.getElementById('notebookStep2');
-                this.offerToken = document.getElementById('offerToken');
-                this.answerTokenInput = document.getElementById('answerTokenInput');
-                this.btnConnectTransmitter = document.getElementById('btnConnectTransmitter');
+                this.pinDisplayArea = document.getElementById('pinDisplayArea');
+                this.roomPinDisplay = document.getElementById('roomPinDisplay');
                 this.transmitterStatus = document.getElementById('transmitterStatus');
 
-                // DOM Elements - Receiver
-                this.offerTokenInput = document.getElementById('offerTokenInput');
-                this.btnGenerateAnswer = document.getElementById('btnGenerateAnswer');
-                this.tabletStep2 = document.getElementById('tabletStep2');
-                this.answerToken = document.getElementById('answerToken');
+                // Referências DOM - Receptor
+                this.pinInput = document.getElementById('pinInput');
+                this.btnConnect = document.getElementById('btnConnect');
+                this.receiverStatus = document.getElementById('receiverStatus');
                 this.remoteVideo = document.getElementById('remoteVideo');
                 this.videoPlaceholder = document.getElementById('videoPlaceholder');
+                
+                // Referências DOM - Fullscreen
+                this.videoContainer = document.getElementById('videoContainer');
+                this.btnFullscreen = document.getElementById('btnFullscreen');
+
+                // Estado Interno
+                this.peer = null;
+                this.localStream = null;
+                this.namespace = 'scrcast-v1-'; // Prefixo para evitar colisões globais no PeerJS
 
                 this.bindEvents();
             }
 
             bindEvents() {
-                this.btnStartCapture.addEventListener('click', () => this.handleStartCapture());
-                this.btnConnectTransmitter.addEventListener('click', () => this.handleConnectTransmitter());
-                this.btnGenerateAnswer.addEventListener('click', () => this.handleGenerateAnswer());
+                this.btnStartCapture.addEventListener('click', () => this.initTransmitter());
+                this.btnConnect.addEventListener('click', () => this.initReceiver());
+                
+                // UX de input (acionar conectar ao dar Enter e limitar a 5 digitos)
+                this.pinInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.initReceiver();
+                });
+                this.pinInput.addEventListener('input', (e) => {
+                    if(e.target.value.length > 5) e.target.value = e.target.value.slice(0,5);
+                });
+
+                // Fullscreen Events
+                this.btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
+                this.remoteVideo.addEventListener('dblclick', () => this.toggleFullscreen());
             }
 
-            updateStatus(msg, isError = false) {
-                this.transmitterStatus.textContent = msg;
-                this.transmitterStatus.className = `mt-4 text-sm font-medium ${isError ? 'text-red-400' : 'text-blue-400'}`;
+            updateStatus(element, msg, isError = false) {
+                element.textContent = msg;
+                element.className = `mt-2 text-sm text-center font-medium ${isError ? 'text-red-400' : 'text-blue-400'}`;
             }
 
-            /**
-             * Fluxo do Transmissor: Captura tela -> Cria Oferta -> Aguarda ICE -> Gera Token
-             */
-            async handleStartCapture() {
+            // ==========================================
+            // FLUXO DO TRANSMISSOR (NOTEBOOK)
+            // ==========================================
+            async initTransmitter() {
                 try {
-                    // 1. Captura a tela (Requer HTTPS ou localhost)
+                    // 1. Captura da Tela (Requer HTTPS/Localhost)
                     this.localStream = await navigator.mediaDevices.getDisplayMedia({
-                        video: { cursor: "always" },
-                        audio: false // Simplificado para vídeo apenas
+                        video: { cursor: "always", frameRate: 60 },
+                        audio: false // Apenas vídeo para otimizar latência
                     });
 
-                    this.peerConnection = new RTCPeerConnection(this.rtcConfig);
-
-                    // Adiciona a stream de vídeo ao WebRTC
-                    this.localStream.getTracks().forEach(track => {
-                        this.peerConnection.addTrack(track, this.localStream);
-                        // Se o usuário parar o compartilhamento na interface do navegador
-                        track.onended = () => this.updateStatus('Captura de tela encerrada pelo usuário.', true);
-                    });
-
-                    // 2. Coleta de ICE Candidates (Assíncrono)
-                    this.peerConnection.onicecandidate = (event) => {
-                        if (event.candidate === null) {
-                            // ICE Gathering concluído. Agora o SDP está completo e podemos codificar.
-                            const sdpBase64 = btoa(JSON.stringify(this.peerConnection.localDescription));
-                            this.offerToken.value = sdpBase64;
-                            this.updateStatus('Token gerado com sucesso. Copie e envie para o tablet.');
-                            this.notebookStep2.classList.remove('hidden');
-                            this.btnStartCapture.classList.add('opacity-50', 'pointer-events-none');
-                        }
+                    // Caso o usuário clique no botão nativo "Parar Compartilhamento"
+                    this.localStream.getVideoTracks()[0].onended = () => {
+                        this.updateStatus(this.transmitterStatus, 'Transmissão encerrada pelo usuário.', true);
+                        if(this.peer) this.peer.destroy();
+                        this.pinDisplayArea.classList.add('hidden');
+                        this.btnStartCapture.classList.remove('hidden');
                     };
 
-                    // 3. Cria a oferta
-                    const offer = await this.peerConnection.createOffer();
-                    await this.peerConnection.setLocalDescription(offer);
-                    this.updateStatus('Gerando rotas de rede (ICE)... aguarde.');
+                    // 2. Gera PIN aleatório de 5 dígitos
+                    const pin = Math.floor(10000 + Math.random() * 90000);
+                    const roomId = `${this.namespace}${pin}`;
+
+                    // 3. Inicializa Conexão no Servidor de Sinalização (PeerJS Cloud)
+                    this.updateStatus(this.transmitterStatus, 'Criando sala no servidor de sinalização...');
+                    this.peer = new Peer(roomId, { debug: 2 });
+
+                    this.peer.on('open', (id) => {
+                        // Sala criada com sucesso
+                        this.btnStartCapture.classList.add('hidden');
+                        this.pinDisplayArea.classList.remove('hidden');
+                        this.roomPinDisplay.textContent = pin;
+                        this.updateStatus(this.transmitterStatus, 'Sala criada! Aguardando tablet se conectar...');
+                    });
+
+                    this.peer.on('error', (err) => {
+                        console.error('PeerJS Error:', err);
+                        this.updateStatus(this.transmitterStatus, `Erro de rede: ${err.type}`, true);
+                    });
+
+                    // 4. Aguarda Tablet se conectar via Canal de Dados
+                    this.peer.on('connection', (conn) => {
+                        this.updateStatus(this.transmitterStatus, 'Tablet conectado! Estabelecendo túnel de vídeo...', false);
+                        
+                        conn.on('open', () => {
+                            // Quando o tablet der "Oi", nós ligamos para ele com o Vídeo
+                            const call = this.peer.call(conn.peer, this.localStream);
+                            
+                            call.on('error', (err) => {
+                                this.updateStatus(this.transmitterStatus, 'Erro na transmissão de vídeo.', true);
+                            });
+                        });
+                    });
 
                 } catch (error) {
-                    console.error("Erro na captura de tela:", error);
-                    this.updateStatus('Erro: Permissão negada ou API não suportada. Use HTTPS/localhost.', true);
+                    console.error("Erro na captura:", error);
+                    this.updateStatus(this.transmitterStatus, 'Permissão negada ou ambiente sem HTTPS.', true);
                 }
             }
 
-            /**
-             * Fluxo do Receptor: Recebe Oferta -> Cria Resposta -> Aguarda ICE -> Gera Token
-             */
-            async handleGenerateAnswer() {
-                const offerB64 = this.offerTokenInput.value.trim();
-                if (!offerB64) {
-                    alert('Cole o token do notebook primeiro.');
+            // ==========================================
+            // FLUXO DO RECEPTOR (TABLET)
+            // ==========================================
+            initReceiver() {
+                const pin = this.pinInput.value.trim();
+                if (pin.length !== 5) {
+                    this.updateStatus(this.receiverStatus, 'Por favor, digite o PIN de 5 dígitos.', true);
                     return;
                 }
 
-                try {
-                    const offerDesc = JSON.parse(atob(offerB64));
-                    this.peerConnection = new RTCPeerConnection(this.rtcConfig);
+                this.btnConnect.disabled = true;
+                this.btnConnect.classList.add('opacity-50', 'cursor-not-allowed');
+                this.updateStatus(this.receiverStatus, 'Conectando ao servidor...');
 
-                    // 1. Configura evento para receber a stream de vídeo
-                    this.peerConnection.ontrack = (event) => {
+                // 1. Inicializa o cliente sem ID específico (o servidor gera um ID aleatório)
+                this.peer = new Peer({ debug: 2 });
+
+                this.peer.on('open', (myId) => {
+                    this.updateStatus(this.receiverStatus, 'Buscando sala no servidor...');
+                    
+                    const roomId = `${this.namespace}${pin}`;
+                    
+                    // 2. Conecta ao Transmissor via Canal de Dados para avisar que chegamos
+                    const conn = this.peer.connect(roomId);
+                    
+                    conn.on('open', () => {
+                        this.updateStatus(this.receiverStatus, 'Handshake concluído. Recebendo vídeo...', false);
+                    });
+
+                    conn.on('error', (err) => {
+                         this.updateStatus(this.receiverStatus, 'Falha ao conectar na sala.', true);
+                         this.resetReceiverBtn();
+                    });
+                });
+
+                // 3. Aguarda o Transmissor ligar enviando o Stream de Vídeo
+                this.peer.on('call', (call) => {
+                    // Atende a chamada sem enviar stream (recebimento unidirecional)
+                    call.answer(); 
+
+                    call.on('stream', (remoteStream) => {
+                        this.updateStatus(this.receiverStatus, 'Transmissão ativa e em tempo real!', false);
+                        
+                        // Renderiza o vídeo na tela
                         this.videoPlaceholder.classList.add('hidden');
                         this.remoteVideo.classList.remove('hidden');
-                        if (this.remoteVideo.srcObject !== event.streams[0]) {
-                            this.remoteVideo.srcObject = event.streams[0];
+                        this.btnFullscreen.classList.remove('hidden');
+                        
+                        if (this.remoteVideo.srcObject !== remoteStream) {
+                            this.remoteVideo.srcObject = remoteStream;
                         }
-                    };
+                    });
 
-                    // 2. Coleta de ICE Candidates da Resposta
-                    this.peerConnection.onicecandidate = (event) => {
-                        if (event.candidate === null) {
-                            const answerBase64 = btoa(JSON.stringify(this.peerConnection.localDescription));
-                            this.answerToken.value = answerBase64;
-                            this.tabletStep2.classList.remove('hidden');
-                            this.btnGenerateAnswer.classList.add('opacity-50', 'pointer-events-none');
-                        }
-                    };
+                    call.on('close', () => {
+                        this.updateStatus(this.receiverStatus, 'A transmissão foi encerrada pelo notebook.', true);
+                        this.remoteVideo.classList.add('hidden');
+                        this.btnFullscreen.classList.add('hidden');
+                        this.videoPlaceholder.classList.remove('hidden');
+                        this.resetReceiverBtn();
+                    });
+                });
 
-                    // 3. Processa Oferta e gera Resposta
-                    await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offerDesc));
-                    const answer = await this.peerConnection.createAnswer();
-                    await this.peerConnection.setLocalDescription(answer);
-
-                } catch (error) {
-                    console.error("Erro ao gerar resposta:", error);
-                    alert('Token inválido ou corrompido.');
-                }
+                this.peer.on('error', (err) => {
+                    console.error('PeerJS Error:', err);
+                    if(err.type === 'peer-unavailable') {
+                        this.updateStatus(this.receiverStatus, 'PIN inválido ou sala não encontrada.', true);
+                    } else {
+                        this.updateStatus(this.receiverStatus, `Erro de conexão: ${err.type}`, true);
+                    }
+                    this.resetReceiverBtn();
+                });
             }
 
-            /**
-             * Fluxo Final do Transmissor: Recebe Resposta -> Fecha Conexão
-             */
-            async handleConnectTransmitter() {
-                const answerB64 = this.answerTokenInput.value.trim();
-                if (!answerB64) {
-                    this.updateStatus('Cole o token de resposta primeiro.', true);
-                    return;
-                }
+            resetReceiverBtn() {
+                this.btnConnect.disabled = false;
+                this.btnConnect.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
 
-                try {
-                    const answerDesc = JSON.parse(atob(answerB64));
-                    await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answerDesc));
-                    this.updateStatus('Conexão P2P estabelecida! Transmitindo tela...', false);
-                    this.btnConnectTransmitter.classList.add('hidden');
-                } catch (error) {
-                    console.error("Erro ao conectar:", error);
-                    this.updateStatus('Erro ao aplicar o token de resposta. Verifique a cópia.', true);
+            // ==========================================
+            // API DE TELA CHEIA (FULLSCREEN)
+            // ==========================================
+            toggleFullscreen() {
+                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                    if (this.videoContainer.requestFullscreen) {
+                        this.videoContainer.requestFullscreen();
+                    } else if (this.videoContainer.webkitRequestFullscreen) {
+                        this.videoContainer.webkitRequestFullscreen(); // Safari/iPad
+                    } else if (this.videoContainer.msRequestFullscreen) {
+                        this.videoContainer.msRequestFullscreen(); // IE11
+                    }
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    } else if (document.msExitFullscreen) {
+                        document.msExitFullscreen();
+                    }
                 }
             }
         }
 
-        // Inicializa a aplicação
+        // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
             new ScreenCasterApp();
         });
