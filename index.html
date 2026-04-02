@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebRTC Screen Caster - Interativo</title>
+    <title>WebRTC Screen Caster - Multimídia</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -19,62 +19,76 @@
             align-items: center;
             justify-content: center;
         }
-
-        /* Cursor virtual para simular o recebimento do mouse do tablet */
-        #virtualPointer {
-            position: fixed;
-            width: 15px;
-            height: 15px;
-            background-color: red;
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 9999;
-            transform: translate(-50%, -50%);
-            transition: top 0.05s linear, left 0.05s linear;
-            box-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
-        }
+        
+        /* Ocultar scrollbars para melhor UX em painéis de status */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans relative">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
 
-    <!-- Cursor Virtual: Exibido apenas no Notebook -->
-    <div id="virtualPointer" class="hidden"></div>
+    <!-- Áudio do Tablet tocando no Notebook (oculto) -->
+    <audio id="remoteTabletAudio" autoplay class="hidden"></audio>
 
     <header class="bg-slate-800 p-4 shadow-md border-b border-slate-700 z-10 relative">
-        <h1 class="text-2xl font-bold text-center text-blue-400">Monitor Estendido Interativo</h1>
-        <p class="text-center text-sm text-slate-400 mt-1">Vídeo, Áudio e Input P2P (Powered by PeerJS)</p>
+        <h1 class="text-2xl font-bold text-center text-blue-400">Monitor Estendido Multimídia</h1>
+        <p class="text-center text-sm text-slate-400 mt-1">Vídeo Dinâmico e Áudio Bidirecional (P2P)</p>
     </header>
 
-    <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-8 z-10 relative">
+    <main class="flex-1 max-w-6xl w-full mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-8 z-10 relative">
         
-        <!-- PAINEL DO NOTEBOOK (TRANSMISSOR) -->
-        <section class="flex-1 bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700">
+        <!-- ========================================== -->
+        <!-- PAINEL DO NOTEBOOK (TRANSMISSOR)           -->
+        <!-- ========================================== -->
+        <section class="flex-1 bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700 flex flex-col">
             <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
                 <span class="bg-blue-500 w-3 h-3 rounded-full"></span>
                 1. Notebook (Transmissor)
             </h2>
             
-            <div class="space-y-6">
-                <p class="text-sm text-slate-300">Compartilhe tela + áudio e gere o código.</p>
+            <div class="space-y-6 flex-1">
                 
-                <button id="btnStartCapture" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-4 rounded-lg transition-colors text-lg shadow-md">
-                    Capturar Tela e Criar Sala
-                </button>
+                <!-- Controles Pré-Conexão -->
+                <div id="notebookPreConnect">
+                    <p class="text-sm text-slate-300 mb-4">Inicie a transmissão da tela. O navegador pedirá permissão para a tela e para o microfone.</p>
+                    <button id="btnStartCapture" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-4 rounded-lg transition-colors text-lg shadow-md">
+                        Iniciar Transmissão e Criar Sala
+                    </button>
+                </div>
 
-                <div id="pinDisplayArea" class="hidden flex flex-col items-center justify-center p-6 bg-slate-900 rounded-lg border border-slate-700">
-                    <span class="text-slate-400 text-sm mb-2">Digite este PIN no Tablet:</span>
-                    <div id="roomPinDisplay" class="text-5xl font-mono font-bold text-emerald-400 tracking-widest">00000</div>
-                    <div id="inputLog" class="mt-4 w-full h-20 bg-black rounded p-2 text-xs text-green-500 overflow-y-auto font-mono">
-                        Aguardando inputs do tablet...
+                <!-- Painel Pós-Conexão (PIN e Controles Multimídia) -->
+                <div id="notebookPostConnect" class="hidden flex flex-col space-y-4">
+                    
+                    <div class="flex flex-col items-center justify-center p-4 bg-slate-900 rounded-lg border border-slate-700">
+                        <span class="text-slate-400 text-xs mb-1">PIN DA SALA:</span>
+                        <div id="roomPinDisplay" class="text-4xl font-mono font-bold text-emerald-400 tracking-widest">00000</div>
                     </div>
+
+                    <div class="bg-slate-900 rounded-lg p-4 border border-slate-700 space-y-3">
+                        <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-2">Controles da Tela</h3>
+                        
+                        <button id="btnChangeScreen" class="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-sm font-medium py-3 px-4 rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50" disabled>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                            Trocar Tela Exibida (Sem Desconectar)
+                        </button>
+
+                        <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mt-4 mb-2">Áudio do Notebook</h3>
+                        
+                        <button id="btnTogglePCMic" class="w-full bg-red-900/50 hover:bg-red-800 border border-red-700 text-red-200 text-sm font-medium py-3 px-4 rounded transition-colors flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                            Microfone PC: MUTADO
+                        </button>
+                    </div>
+
                 </div>
             </div>
             
             <div id="transmitterStatus" class="mt-6 text-sm text-center text-slate-400">Aguardando início...</div>
         </section>
 
-
-        <!-- PAINEL DO TABLET (RECEPTOR) -->
+        <!-- ========================================== -->
+        <!-- PAINEL DO TABLET (RECEPTOR)                -->
+        <!-- ========================================== -->
         <section class="flex-1 bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700 flex flex-col">
             <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
                 <span class="bg-purple-500 w-3 h-3 rounded-full"></span>
@@ -82,29 +96,33 @@
             </h2>
 
             <div class="space-y-4 flex-1 flex flex-col">
-                <p class="text-sm text-slate-300">Conecte-se para assistir e interagir.</p>
-
-                <div class="flex gap-2">
+                
+                <div id="tabletConnectArea" class="flex gap-2">
                     <input type="number" id="pinInput" class="flex-1 bg-slate-900 border border-slate-600 rounded-lg p-4 text-2xl text-center text-white font-mono tracking-widest focus:outline-none focus:border-purple-500 placeholder-slate-600" placeholder="PIN" maxlength="5">
                     <button id="btnConnect" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 px-6 rounded-lg transition-colors shadow-md">
                         Conectar
                     </button>
                 </div>
                 
+                <!-- Controles de Áudio do Tablet (Exibido após conectar) -->
+                <div id="tabletAudioControls" class="hidden bg-slate-900 rounded-lg p-3 border border-slate-700">
+                    <button id="btnToggleTabletMic" class="w-full bg-red-900/50 hover:bg-red-800 border border-red-700 text-red-200 text-sm font-medium py-2 px-4 rounded transition-colors flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                        Microfone Tablet: MUTADO
+                    </button>
+                </div>
+
                 <div id="receiverStatus" class="text-sm text-center text-slate-400">Pronto para conectar.</div>
 
-                <!-- Video Player Container (Área de Interação) -->
-                <!-- tabindex="0" permite que a div receba foco para capturar eventos de teclado -->
-                <div id="videoContainer" tabindex="0" class="mt-4 flex-1 bg-black rounded-lg overflow-hidden border border-slate-700 relative flex items-center justify-center min-h-[250px] outline-none">
-                    <span id="videoPlaceholder" class="text-slate-500 text-sm absolute z-10 pointer-events-none">A tela estendida aparecerá aqui</span>
+                <!-- Video Player Container -->
+                <div id="videoContainer" class="mt-2 flex-1 bg-black rounded-lg overflow-hidden border border-slate-700 relative flex items-center justify-center min-h-[300px]">
+                    <span id="videoPlaceholder" class="text-slate-500 text-sm absolute z-10 pointer-events-none">A tela aparecerá aqui</span>
                     
+                    <!-- O Video do tablet recebe o Stream de Vídeo + Áudio do PC -->
                     <video id="remoteVideo" autoplay playsinline class="w-full h-full object-contain hidden z-0"></video>
                     
-                    <!-- Botão de Tela Cheia -->
                     <button id="btnFullscreen" class="hidden absolute bottom-4 right-4 bg-slate-800/80 hover:bg-slate-700 text-white p-3 rounded-lg backdrop-blur-sm transition-colors z-20 shadow-lg border border-slate-600" title="Alternar Tela Cheia">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
-                        </svg>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
                     </button>
                 </div>
             </div>
@@ -115,47 +133,65 @@
     <script>
         class ScreenCasterApp {
             constructor() {
-                // DOM Transmissor
+                // Elementos do Notebook (Transmissor)
                 this.btnStartCapture = document.getElementById('btnStartCapture');
-                this.pinDisplayArea = document.getElementById('pinDisplayArea');
+                this.notebookPreConnect = document.getElementById('notebookPreConnect');
+                this.notebookPostConnect = document.getElementById('notebookPostConnect');
                 this.roomPinDisplay = document.getElementById('roomPinDisplay');
                 this.transmitterStatus = document.getElementById('transmitterStatus');
-                this.inputLog = document.getElementById('inputLog');
-                this.virtualPointer = document.getElementById('virtualPointer');
+                this.btnChangeScreen = document.getElementById('btnChangeScreen');
+                this.btnTogglePCMic = document.getElementById('btnTogglePCMic');
+                this.remoteTabletAudio = document.getElementById('remoteTabletAudio');
 
-                // DOM Receptor
+                // Elementos do Tablet (Receptor)
                 this.pinInput = document.getElementById('pinInput');
                 this.btnConnect = document.getElementById('btnConnect');
+                this.tabletConnectArea = document.getElementById('tabletConnectArea');
+                this.tabletAudioControls = document.getElementById('tabletAudioControls');
+                this.btnToggleTabletMic = document.getElementById('btnToggleTabletMic');
                 this.receiverStatus = document.getElementById('receiverStatus');
                 this.remoteVideo = document.getElementById('remoteVideo');
                 this.videoPlaceholder = document.getElementById('videoPlaceholder');
-                
-                // DOM Fullscreen e Interação
                 this.videoContainer = document.getElementById('videoContainer');
                 this.btnFullscreen = document.getElementById('btnFullscreen');
 
                 // Estado Interno
                 this.peer = null;
-                this.dataConnection = null; // Canal P2P para Mouse/Teclado
-                this.localStream = null;
-                this.namespace = 'scrcast-v2-'; 
+                this.activeCall = null; 
+                this.namespace = 'scrcast-v6-'; 
                 
-                this.role = null; // 'transmitter' ou 'receiver'
+                // Streams Locais
+                this.pcCombinedStream = new MediaStream(); // Tela + Mic do PC
+                this.pcScreenTrack = null;
+                this.pcMicTrack = null;
+                
+                this.tabletMicStream = null;
+                this.tabletMicTrack = null;
+
+                // Controle de Estado dos Microfones
+                this.pcMicEnabled = false;
+                this.tabletMicEnabled = false;
 
                 this.bindEvents();
             }
 
             bindEvents() {
+                // Eventos Notebook
                 this.btnStartCapture.addEventListener('click', () => this.initTransmitter());
+                this.btnChangeScreen.addEventListener('click', () => this.changeScreen());
+                this.btnTogglePCMic.addEventListener('click', () => this.togglePCMic());
+
+                // Eventos Tablet
                 this.btnConnect.addEventListener('click', () => this.initReceiver());
-                
                 this.pinInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.initReceiver();
                 });
                 this.pinInput.addEventListener('input', (e) => {
                     if(e.target.value.length > 5) e.target.value = e.target.value.slice(0,5);
                 });
+                this.btnToggleTabletMic.addEventListener('click', () => this.toggleTabletMic());
 
+                // UI
                 this.btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
             }
 
@@ -165,34 +201,54 @@
             }
 
             // ==========================================
-            // TRANSMISSOR: NOTEBOOK (Recebe Inputs)
+            // TRANSMISSOR: NOTEBOOK LOGIC
             // ==========================================
             async initTransmitter() {
-                this.role = 'transmitter';
                 try {
-                    // OBRIGATÓRIO: audio: true para capturar o som do sistema.
-                    this.localStream = await navigator.mediaDevices.getDisplayMedia({
-                        video: { cursor: "always", frameRate: 60 },
-                        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
+                    // 1. Obtém a Tela
+                    this.updateStatus(this.transmitterStatus, 'Solicitando permissão de tela...');
+                    const screenStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { cursor: "always" },
+                        audio: false // Pegaremos o microfone separadamente
                     });
+                    this.pcScreenTrack = screenStream.getVideoTracks()[0];
+                    this.pcCombinedStream.addTrack(this.pcScreenTrack);
 
-                    this.localStream.getVideoTracks()[0].onended = () => {
-                        this.updateStatus(this.transmitterStatus, 'Transmissão encerrada.', true);
+                    // Lida com o botão nativo "Parar compartilhamento"
+                    this.pcScreenTrack.onended = () => {
+                        this.updateStatus(this.transmitterStatus, 'Compartilhamento nativo encerrado.', true);
                         if(this.peer) this.peer.destroy();
-                        this.pinDisplayArea.classList.add('hidden');
-                        this.btnStartCapture.classList.remove('hidden');
-                        this.virtualPointer.classList.add('hidden');
+                        this.notebookPostConnect.classList.add('hidden');
+                        this.notebookPreConnect.classList.remove('hidden');
+                        if (this.pcMicTrack) this.pcMicTrack.stop();
                     };
 
+                    // 2. Obtém o Microfone do PC (Silencioso para o SO, pede permissão)
+                    try {
+                        this.updateStatus(this.transmitterStatus, 'Solicitando permissão de microfone...');
+                        const micStream = await navigator.mediaDevices.getUserMedia({
+                            audio: { echoCancellation: true, noiseSuppression: true }
+                        });
+                        this.pcMicTrack = micStream.getAudioTracks()[0];
+                        // Inicia MUTADO para evitar microfonia imediata
+                        this.pcMicTrack.enabled = false;
+                        this.pcCombinedStream.addTrack(this.pcMicTrack);
+                    } catch (micErr) {
+                        console.warn("Microfone do PC negado ou indisponível.", micErr);
+                        this.btnTogglePCMic.disabled = true;
+                        this.btnTogglePCMic.textContent = "Mic indisponível/Negado";
+                    }
+
+                    // 3. Inicializa Sinalização
                     const pin = Math.floor(10000 + Math.random() * 90000);
                     const roomId = `${this.namespace}${pin}`;
 
                     this.updateStatus(this.transmitterStatus, 'Criando sala no servidor...');
                     this.peer = new Peer(roomId, { debug: 2 });
 
-                    this.peer.on('open', (id) => {
-                        this.btnStartCapture.classList.add('hidden');
-                        this.pinDisplayArea.classList.remove('hidden');
+                    this.peer.on('open', () => {
+                        this.notebookPreConnect.classList.add('hidden');
+                        this.notebookPostConnect.classList.remove('hidden');
                         this.roomPinDisplay.textContent = pin;
                         this.updateStatus(this.transmitterStatus, 'Sala criada! Aguardando tablet...');
                     });
@@ -201,149 +257,192 @@
                         this.updateStatus(this.transmitterStatus, `Erro de rede: ${err.type}`, true);
                     });
 
-                    // Tablet conectou via DataChannel
+                    // 4. Quando o tablet conectar
                     this.peer.on('connection', (conn) => {
-                        this.dataConnection = conn;
-                        this.updateStatus(this.transmitterStatus, 'Tablet conectado! Transmitindo A/V...', false);
+                        this.updateStatus(this.transmitterStatus, 'Tablet conectado! Iniciando túnel A/V...', false);
                         
-                        // Ouve os dados de Mouse/Teclado do tablet
-                        conn.on('data', (data) => this.handleRemoteInput(data));
-
                         conn.on('open', () => {
-                            // Envia stream de áudio e vídeo
-                            const call = this.peer.call(conn.peer, this.localStream);
-                            call.on('error', () => this.updateStatus(this.transmitterStatus, 'Erro no stream.', true));
+                            // Liga para o tablet enviando o Stream Combinado (Tela + Mic)
+                            this.activeCall = this.peer.call(conn.peer, this.pcCombinedStream);
+                            this.btnChangeScreen.disabled = false;
+
+                            this.activeCall.on('error', () => this.updateStatus(this.transmitterStatus, 'Erro no stream.', true));
+                            
+                            // Se o tablet enviar seu microfone de volta, ouvimos aqui
+                            this.activeCall.on('stream', (tabletRemoteStream) => {
+                                this.remoteTabletAudio.srcObject = tabletRemoteStream;
+                            });
                         });
                     });
 
                 } catch (error) {
-                    console.error("Erro captura:", error);
-                    this.updateStatus(this.transmitterStatus, 'Permissão negada. Marque "Compartilhar áudio do sistema".', true);
+                    console.error("Erro inicialização Transmissor:", error);
+                    this.updateStatus(this.transmitterStatus, 'Permissão negada ou captura cancelada.', true);
                 }
             }
 
-            logInput(msg) {
-                const p = document.createElement('div');
-                p.textContent = `> ${msg}`;
-                this.inputLog.appendChild(p);
-                this.inputLog.scrollTop = this.inputLog.scrollHeight;
-            }
+            // Realiza a troca da tela sem derrubar o WebRTC
+            async changeScreen() {
+                if (!this.activeCall) return;
 
-            // Simulação Visual no Notebook do que o Tablet está fazendo
-            handleRemoteInput(payload) {
                 try {
-                    const event = JSON.parse(payload);
+                    this.btnChangeScreen.disabled = true;
+                    this.updateStatus(this.transmitterStatus, 'Solicitando nova tela...');
                     
-                    if (event.type === 'pointer') {
-                        this.virtualPointer.classList.remove('hidden');
-                        // Transforma coordenadas relativas (0.0 a 1.0) para absolutas da aba atual
-                        const x = event.x * window.innerWidth;
-                        const y = event.y * window.innerHeight;
-                        this.virtualPointer.style.left = `${x}px`;
-                        this.virtualPointer.style.top = `${y}px`;
-                        
-                        if(event.action === 'click') {
-                            this.virtualPointer.style.backgroundColor = 'yellow';
-                            setTimeout(() => this.virtualPointer.style.backgroundColor = 'red', 150);
-                            this.logInput(`CLICK: x:${event.x.toFixed(2)}, y:${event.y.toFixed(2)}`);
-                        }
-                    } 
-                    else if (event.type === 'key') {
-                        this.logInput(`TECLA: ${event.key}`);
-                    }
+                    // Pede uma nova tela ao SO
+                    const newScreenStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { cursor: "always" },
+                        audio: false
+                    });
+                    
+                    const newVideoTrack = newScreenStream.getVideoTracks()[0];
 
-                } catch (e) {
-                    console.error("Erro ao parsear input", e);
+                    // Substitui a track diretamente no túnel WebRTC (RTCPeerConnection)
+                    const sender = this.activeCall.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+                    
+                    if (sender) {
+                        await sender.replaceTrack(newVideoTrack);
+                        
+                        // Para a track antiga para limpar o ícone de gravação do navegador
+                        if (this.pcScreenTrack) this.pcScreenTrack.stop();
+                        
+                        // Atualiza a referência
+                        this.pcScreenTrack = newVideoTrack;
+                        
+                        // Re-assina evento de encerramento nativo
+                        this.pcScreenTrack.onended = () => {
+                            this.updateStatus(this.transmitterStatus, 'Compartilhamento nativo encerrado.', true);
+                            if(this.peer) this.peer.destroy();
+                            this.notebookPostConnect.classList.add('hidden');
+                            this.notebookPreConnect.classList.remove('hidden');
+                        };
+
+                        this.updateStatus(this.transmitterStatus, 'Tela trocada com sucesso!', false);
+                    }
+                } catch (err) {
+                    console.error("Erro ao trocar tela:", err);
+                    this.updateStatus(this.transmitterStatus, 'Troca de tela cancelada.', true);
+                } finally {
+                    this.btnChangeScreen.disabled = false;
                 }
             }
 
+            togglePCMic() {
+                if (!this.pcMicTrack) return;
+                
+                this.pcMicEnabled = !this.pcMicEnabled;
+                this.pcMicTrack.enabled = this.pcMicEnabled; // Ativa/Muta via hardware, sem afetar SDP
+
+                if (this.pcMicEnabled) {
+                    this.btnTogglePCMic.className = "w-full bg-green-900/50 hover:bg-green-800 border border-green-700 text-green-200 text-sm font-medium py-3 px-4 rounded transition-colors flex items-center justify-center gap-2";
+                    this.btnTogglePCMic.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg> Microfone PC: ENVIANDO`;
+                } else {
+                    this.btnTogglePCMic.className = "w-full bg-red-900/50 hover:bg-red-800 border border-red-700 text-red-200 text-sm font-medium py-3 px-4 rounded transition-colors flex items-center justify-center gap-2";
+                    this.btnTogglePCMic.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg> Microfone PC: MUTADO`;
+                }
+            }
+
+
             // ==========================================
-            // RECEPTOR: TABLET (Envia Inputs e Toca Áudio)
+            // RECEPTOR: TABLET LOGIC
             // ==========================================
-            initReceiver() {
-                this.role = 'receiver';
+            async initReceiver() {
                 const pin = this.pinInput.value.trim();
                 if (pin.length !== 5) return;
 
                 this.btnConnect.disabled = true;
                 this.btnConnect.classList.add('opacity-50');
-                this.updateStatus(this.receiverStatus, 'Conectando...');
+                this.updateStatus(this.receiverStatus, 'Solicitando microfone do Tablet...');
+
+                try {
+                    // Pede o microfone do tablet primeiro para poder enviar na resposta
+                    this.tabletMicStream = await navigator.mediaDevices.getUserMedia({
+                        audio: { echoCancellation: true, noiseSuppression: true }
+                    });
+                    this.tabletMicTrack = this.tabletMicStream.getAudioTracks()[0];
+                    this.tabletMicTrack.enabled = false; // Inicia mutado
+                    
+                    this.updateStatus(this.receiverStatus, 'Conectando ao servidor...');
+
+                } catch (micErr) {
+                    console.warn("Microfone do Tablet negado/indisponível", micErr);
+                    this.tabletMicStream = new MediaStream(); // Stream vazio se falhar
+                    this.btnToggleTabletMic.disabled = true;
+                    this.btnToggleTabletMic.textContent = "Mic indisponível";
+                }
 
                 this.peer = new Peer({ debug: 2 });
 
-                this.peer.on('open', (myId) => {
+                this.peer.on('open', () => {
                     const roomId = `${this.namespace}${pin}`;
-                    this.dataConnection = this.peer.connect(roomId);
+                    const conn = this.peer.connect(roomId);
                     
-                    this.dataConnection.on('open', () => {
-                        this.updateStatus(this.receiverStatus, 'Sincronizado. Recebendo A/V...', false);
-                        this.bindInteractionEvents(); // Ativa a captura de inputs
+                    conn.on('open', () => {
+                        this.updateStatus(this.receiverStatus, 'Sincronizado. Aguardando vídeo do PC...', false);
                     });
 
-                    this.dataConnection.on('error', () => {
+                    conn.on('error', () => {
                          this.updateStatus(this.receiverStatus, 'Falha de conexão.', true);
-                         this.btnConnect.disabled = false;
-                         this.btnConnect.classList.remove('opacity-50');
+                         this.resetTabletConnectBtn();
                     });
                 });
 
+                // Quando o PC ligar enviando o vídeo
                 this.peer.on('call', (call) => {
-                    call.answer(); 
-                    call.on('stream', (remoteStream) => {
-                        this.updateStatus(this.receiverStatus, 'Conectado! Áudio e Vídeo rodando.', false);
+                    this.activeCall = call;
+                    
+                    // Atende a chamada enviando o Microfone do Tablet de volta
+                    call.answer(this.tabletMicStream); 
+                    
+                    call.on('stream', (pcRemoteStream) => {
+                        this.updateStatus(this.receiverStatus, 'Conectado! Transmissão Ativa.', false);
+                        
+                        this.tabletConnectArea.classList.add('hidden');
+                        this.tabletAudioControls.classList.remove('hidden');
+                        
                         this.videoPlaceholder.classList.add('hidden');
                         this.remoteVideo.classList.remove('hidden');
                         this.btnFullscreen.classList.remove('hidden');
                         
-                        if (this.remoteVideo.srcObject !== remoteStream) {
-                            this.remoteVideo.srcObject = remoteStream;
+                        if (this.remoteVideo.srcObject !== pcRemoteStream) {
+                            this.remoteVideo.srcObject = pcRemoteStream;
                         }
-                        
-                        // Garante que o container tenha foco para capturar teclado no tablet
-                        this.videoContainer.focus();
+                    });
+
+                    call.on('close', () => {
+                        this.updateStatus(this.receiverStatus, 'Conexão encerrada pelo PC.', true);
+                        this.resetTabletView();
                     });
                 });
             }
 
-            // Captura eventos do Tablet e envia para o Notebook via DataChannel
-            bindInteractionEvents() {
-                if(this.role !== 'receiver') return;
-
-                const sendPointerEvent = (e, action = 'move') => {
-                    if (!this.dataConnection || !this.dataConnection.open) return;
-                    e.preventDefault(); // Evita scroll ao arrastar no video
-                    
-                    // Suporte a Mouse e Touch
-                    let clientX = e.clientX;
-                    let clientY = e.clientY;
-                    
-                    if (e.touches && e.touches.length > 0) {
-                        clientX = e.touches[0].clientX;
-                        clientY = e.touches[0].clientY;
-                    }
-
-                    const rect = this.videoContainer.getBoundingClientRect();
-                    // Normaliza as coordenadas entre 0.0 e 1.0
-                    const x = (clientX - rect.left) / rect.width;
-                    const y = (clientY - rect.top) / rect.height;
-
-                    this.dataConnection.send(JSON.stringify({ type: 'pointer', action, x, y }));
-                };
-
-                // Mouse
-                this.videoContainer.addEventListener('mousemove', (e) => sendPointerEvent(e, 'move'));
-                this.videoContainer.addEventListener('mousedown', (e) => sendPointerEvent(e, 'click'));
+            toggleTabletMic() {
+                if (!this.tabletMicTrack) return;
                 
-                // Touch (Tablet/Smartphone)
-                this.videoContainer.addEventListener('touchmove', (e) => sendPointerEvent(e, 'move'), {passive: false});
-                this.videoContainer.addEventListener('touchstart', (e) => sendPointerEvent(e, 'click'), {passive: false});
+                this.tabletMicEnabled = !this.tabletMicEnabled;
+                this.tabletMicTrack.enabled = this.tabletMicEnabled;
 
-                // Teclado
-                this.videoContainer.addEventListener('keydown', (e) => {
-                    if (!this.dataConnection || !this.dataConnection.open) return;
-                    e.preventDefault(); // Previne barra de espaço rolar a página
-                    this.dataConnection.send(JSON.stringify({ type: 'key', key: e.key, code: e.code }));
-                });
+                if (this.tabletMicEnabled) {
+                    this.btnToggleTabletMic.className = "w-full bg-green-900/50 hover:bg-green-800 border border-green-700 text-green-200 text-sm font-medium py-2 px-4 rounded transition-colors flex items-center justify-center gap-2";
+                    this.btnToggleTabletMic.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg> Microfone Tablet: ENVIANDO`;
+                } else {
+                    this.btnToggleTabletMic.className = "w-full bg-red-900/50 hover:bg-red-800 border border-red-700 text-red-200 text-sm font-medium py-2 px-4 rounded transition-colors flex items-center justify-center gap-2";
+                    this.btnToggleTabletMic.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg> Microfone Tablet: MUTADO`;
+                }
+            }
+
+            resetTabletConnectBtn() {
+                this.btnConnect.disabled = false;
+                this.btnConnect.classList.remove('opacity-50');
+            }
+
+            resetTabletView() {
+                this.remoteVideo.classList.add('hidden');
+                this.btnFullscreen.classList.add('hidden');
+                this.videoPlaceholder.classList.remove('hidden');
+                this.tabletConnectArea.classList.remove('hidden');
+                this.tabletAudioControls.classList.add('hidden');
+                this.resetTabletConnectBtn();
             }
 
             toggleFullscreen() {
