@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Screen Caster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos personalizados para garantir usabilidade em touch (Tablet) */
+        button:active { transform: scale(0.98); }
+        textarea { resize: none; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
+
+    <header class="bg-slate-800 p-4 shadow-md border-b border-slate-700">
+        <h1 class="text-2xl font-bold text-center text-blue-400">WebRTC Screen Link</h1>
+        <p class="text-center text-sm text-slate-400 mt-1">Conexão P2P Direta sem Servidor</p>
+    </header>
+
+    <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-8">
+        
+        <!-- PAINEL DO NOTEBOOK (TRANSMISSOR) -->
+        <section class="flex-1 bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700">
+            <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                <span class="bg-blue-500 w-3 h-3 rounded-full"></span>
+                1. Notebook (Transmissor)
+            </h2>
+            
+            <div class="space-y-4">
+                <p class="text-sm text-slate-300">Capture sua tela e gere um token de conexão para o tablet.</p>
+                
+                <button id="btnStartCapture" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                    Capturar Tela e Gerar Token
+                </button>
+
+                <div id="notebookStep2" class="hidden space-y-4 mt-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Copie este Token e envie para o Tablet:</label>
+                        <textarea id="offerToken" readonly class="w-full h-24 bg-slate-900 border border-slate-600 rounded-md p-2 text-xs text-green-400 focus:outline-none focus:border-blue-500 cursor-text" onclick="this.select()"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Cole aqui o Token de Resposta do Tablet:</label>
+                        <textarea id="answerTokenInput" class="w-full h-24 bg-slate-900 border border-slate-600 rounded-md p-2 text-xs text-white focus:outline-none focus:border-blue-500" placeholder="Cole o token recebido do tablet aqui..."></textarea>
+                    </div>
+
+                    <button id="btnConnectTransmitter" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Iniciar Transmissão
+                    </button>
+                </div>
+            </div>
+            
+            <div id="transmitterStatus" class="mt-4 text-sm text-slate-400">Aguardando ação...</div>
+        </section>
+
+
+        <!-- PAINEL DO TABLET (RECEPTOR) -->
+        <section class="flex-1 bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700 flex flex-col">
+            <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                <span class="bg-purple-500 w-3 h-3 rounded-full"></span>
+                2. Tablet (Receptor)
+            </h2>
+
+            <div class="space-y-4 flex-1">
+                <p class="text-sm text-slate-300">Cole o token do Notebook para gerar sua resposta de conexão.</p>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Cole o Token do Notebook aqui:</label>
+                    <textarea id="offerTokenInput" class="w-full h-24 bg-slate-900 border border-slate-600 rounded-md p-2 text-xs text-white focus:outline-none focus:border-purple-500" placeholder="Cole o token do transmissor aqui..."></textarea>
+                </div>
+
+                <button id="btnGenerateAnswer" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                    Gerar Token de Resposta
+                </button>
+
+                <div id="tabletStep2" class="hidden space-y-4 mt-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Copie esta Resposta e devolva ao Notebook:</label>
+                        <textarea id="answerToken" readonly class="w-full h-24 bg-slate-900 border border-slate-600 rounded-md p-2 text-xs text-green-400 focus:outline-none focus:border-purple-500 cursor-text" onclick="this.select()"></textarea>
+                    </div>
+                </div>
+
+                <!-- Video Player -->
+                <div class="mt-6 flex-1 bg-black rounded-lg overflow-hidden border border-slate-700 relative flex items-center justify-center min-h-[200px]">
+                    <span id="videoPlaceholder" class="text-slate-500 text-sm absolute">A tela aparecerá aqui</span>
+                    <video id="remoteVideo" autoplay playsinline class="w-full h-full object-contain hidden"></video>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        /**
+         * Singleton para gerenciar o estado da conexão WebRTC.
+         * Segue princípios de encapsulamento para isolar a complexidade do RTCPeerConnection.
+         */
+        class ScreenCasterApp {
+            constructor() {
+                // Configuração STUN gratuita do Google para descoberta de IP público/NAT
+                this.rtcConfig = {
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                };
+                
+                this.peerConnection = null;
+                this.localStream = null;
+
+                // DOM Elements - Transmitter
+                this.btnStartCapture = document.getElementById('btnStartCapture');
+                this.notebookStep2 = document.getElementById('notebookStep2');
+                this.offerToken = document.getElementById('offerToken');
+                this.answerTokenInput = document.getElementById('answerTokenInput');
+                this.btnConnectTransmitter = document.getElementById('btnConnectTransmitter');
+                this.transmitterStatus = document.getElementById('transmitterStatus');
+
+                // DOM Elements - Receiver
+                this.offerTokenInput = document.getElementById('offerTokenInput');
+                this.btnGenerateAnswer = document.getElementById('btnGenerateAnswer');
+                this.tabletStep2 = document.getElementById('tabletStep2');
+                this.answerToken = document.getElementById('answerToken');
+                this.remoteVideo = document.getElementById('remoteVideo');
+                this.videoPlaceholder = document.getElementById('videoPlaceholder');
+
+                this.bindEvents();
+            }
+
+            bindEvents() {
+                this.btnStartCapture.addEventListener('click', () => this.handleStartCapture());
+                this.btnConnectTransmitter.addEventListener('click', () => this.handleConnectTransmitter());
+                this.btnGenerateAnswer.addEventListener('click', () => this.handleGenerateAnswer());
+            }
+
+            updateStatus(msg, isError = false) {
+                this.transmitterStatus.textContent = msg;
+                this.transmitterStatus.className = `mt-4 text-sm font-medium ${isError ? 'text-red-400' : 'text-blue-400'}`;
+            }
+
+            /**
+             * Fluxo do Transmissor: Captura tela -> Cria Oferta -> Aguarda ICE -> Gera Token
+             */
+            async handleStartCapture() {
+                try {
+                    // 1. Captura a tela (Requer HTTPS ou localhost)
+                    this.localStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { cursor: "always" },
+                        audio: false // Simplificado para vídeo apenas
+                    });
+
+                    this.peerConnection = new RTCPeerConnection(this.rtcConfig);
+
+                    // Adiciona a stream de vídeo ao WebRTC
+                    this.localStream.getTracks().forEach(track => {
+                        this.peerConnection.addTrack(track, this.localStream);
+                        // Se o usuário parar o compartilhamento na interface do navegador
+                        track.onended = () => this.updateStatus('Captura de tela encerrada pelo usuário.', true);
+                    });
+
+                    // 2. Coleta de ICE Candidates (Assíncrono)
+                    this.peerConnection.onicecandidate = (event) => {
+                        if (event.candidate === null) {
+                            // ICE Gathering concluído. Agora o SDP está completo e podemos codificar.
+                            const sdpBase64 = btoa(JSON.stringify(this.peerConnection.localDescription));
+                            this.offerToken.value = sdpBase64;
+                            this.updateStatus('Token gerado com sucesso. Copie e envie para o tablet.');
+                            this.notebookStep2.classList.remove('hidden');
+                            this.btnStartCapture.classList.add('opacity-50', 'pointer-events-none');
+                        }
+                    };
+
+                    // 3. Cria a oferta
+                    const offer = await this.peerConnection.createOffer();
+                    await this.peerConnection.setLocalDescription(offer);
+                    this.updateStatus('Gerando rotas de rede (ICE)... aguarde.');
+
+                } catch (error) {
+                    console.error("Erro na captura de tela:", error);
+                    this.updateStatus('Erro: Permissão negada ou API não suportada. Use HTTPS/localhost.', true);
+                }
+            }
+
+            /**
+             * Fluxo do Receptor: Recebe Oferta -> Cria Resposta -> Aguarda ICE -> Gera Token
+             */
+            async handleGenerateAnswer() {
+                const offerB64 = this.offerTokenInput.value.trim();
+                if (!offerB64) {
+                    alert('Cole o token do notebook primeiro.');
+                    return;
+                }
+
+                try {
+                    const offerDesc = JSON.parse(atob(offerB64));
+                    this.peerConnection = new RTCPeerConnection(this.rtcConfig);
+
+                    // 1. Configura evento para receber a stream de vídeo
+                    this.peerConnection.ontrack = (event) => {
+                        this.videoPlaceholder.classList.add('hidden');
+                        this.remoteVideo.classList.remove('hidden');
+                        if (this.remoteVideo.srcObject !== event.streams[0]) {
+                            this.remoteVideo.srcObject = event.streams[0];
+                        }
+                    };
+
+                    // 2. Coleta de ICE Candidates da Resposta
+                    this.peerConnection.onicecandidate = (event) => {
+                        if (event.candidate === null) {
+                            const answerBase64 = btoa(JSON.stringify(this.peerConnection.localDescription));
+                            this.answerToken.value = answerBase64;
+                            this.tabletStep2.classList.remove('hidden');
+                            this.btnGenerateAnswer.classList.add('opacity-50', 'pointer-events-none');
+                        }
+                    };
+
+                    // 3. Processa Oferta e gera Resposta
+                    await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offerDesc));
+                    const answer = await this.peerConnection.createAnswer();
+                    await this.peerConnection.setLocalDescription(answer);
+
+                } catch (error) {
+                    console.error("Erro ao gerar resposta:", error);
+                    alert('Token inválido ou corrompido.');
+                }
+            }
+
+            /**
+             * Fluxo Final do Transmissor: Recebe Resposta -> Fecha Conexão
+             */
+            async handleConnectTransmitter() {
+                const answerB64 = this.answerTokenInput.value.trim();
+                if (!answerB64) {
+                    this.updateStatus('Cole o token de resposta primeiro.', true);
+                    return;
+                }
+
+                try {
+                    const answerDesc = JSON.parse(atob(answerB64));
+                    await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answerDesc));
+                    this.updateStatus('Conexão P2P estabelecida! Transmitindo tela...', false);
+                    this.btnConnectTransmitter.classList.add('hidden');
+                } catch (error) {
+                    console.error("Erro ao conectar:", error);
+                    this.updateStatus('Erro ao aplicar o token de resposta. Verifique a cópia.', true);
+                }
+            }
+        }
+
+        // Inicializa a aplicação
+        document.addEventListener('DOMContentLoaded', () => {
+            new ScreenCasterApp();
+        });
+    </script>
+</body>
+</html>
