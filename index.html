@@ -1,458 +1,132 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WebRTC Chamada 1-para-1</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Mic Stream - Background Mode</title>
     <style>
-        body { background-color: #111827; color: #f3f4f6; font-family: sans-serif; }
-        .video-container { position: relative; width: 100%; padding-top: 133%; background: #1f2937; border-radius: 0.5rem; overflow: hidden; border: 2px solid #374151; }
-        .video-container video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
-        /* Quando compartilhando tela, ajusta o fit para conter toda a tela e não cortar as bordas */
-        .video-container video.screen-share { object-fit: contain; background: #111; }
-        .video-label { position: absolute; bottom: 0.5rem; left: 0.5rem; background: rgba(0,0,0,0.6); color: white; padding: 0.1rem 0.5rem; border-radius: 0.25rem; font-size: 0.7rem; font-weight: bold; z-index: 10; }
-        .hidden { display: none !important; }
-        input { text-transform: uppercase; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #0f0f0f;
+            color: #e0e0e0;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            border-radius: 15px;
+            background: #1a1a1a;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        #status-light {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #444;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .active { background: #ff0000 !important; box-shadow: 0 0 10px #ff0000; }
+        button {
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(145deg, #007bff, #0056b3);
+            color: white;
+            transition: transform 0.2s;
+        }
+        button:active { transform: scale(0.95); }
+        #log { font-size: 0.8rem; color: #888; margin-top: 20px; max-width: 250px; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center p-4">
+<body>
 
-    <!-- Header -->
-    <header class="w-full max-w-4xl text-center mb-6">
-        <h1 class="text-2xl font-bold text-blue-400">Chamada Direta 1-para-1</h1>
-        <p class="text-xs text-gray-400 mt-1" id="status-text">Pronto. Inicie a chamada ou conecte-se.</p>
-    </header>
-
-    <!-- Seleção de Papel (Role) -->
-    <main id="role-selection" class="w-full max-w-sm bg-gray-800 p-6 rounded-lg shadow-lg text-center flex flex-col gap-4">
-        <button id="btn-role-host" class="bg-blue-600 hover:bg-blue-700 font-bold py-3 px-4 rounded transition-colors">
-            🎥 Criar Chamada (Gerar PIN)
-        </button>
-        <button id="btn-role-join" class="bg-green-600 hover:bg-green-700 font-bold py-3 px-4 rounded transition-colors">
-            👀 Entrar na Chamada (Usar PIN)
-        </button>
-    </main>
-
-    <!-- UI da Sala (1-para-1) -->
-    <section id="room-ui" class="w-full max-w-4xl hidden flex-col gap-4">
-        
-        <!-- Controles Superiores -->
-        <div class="bg-gray-800 p-4 rounded-lg shadow flex flex-col md:flex-row justify-between items-center gap-4">
-            
-            <!-- Bloco do PIN -->
-            <div id="pin-display-block" class="flex-1 w-full text-center md:text-left">
-                <span class="text-sm text-gray-400 block mb-1">Seu PIN (Envie para a outra pessoa):</span>
-                <div class="text-3xl font-mono font-bold tracking-widest text-yellow-400" id="pin-display">
-                    ------
-                </div>
-            </div>
-
-            <!-- Bloco Input de PIN -->
-            <div id="pin-input-block" class="flex-1 w-full flex flex-col sm:flex-row gap-2 hidden">
-                <input type="text" id="viewer-pin-input" maxlength="6" class="flex-1 bg-gray-900 text-white text-xl font-mono text-center tracking-widest p-2 rounded border border-gray-600 focus:outline-none focus:border-green-500 placeholder-gray-700" placeholder="DIGITE O PIN">
-                <button id="btn-connect-room" class="bg-green-600 hover:bg-green-700 font-bold py-2 px-6 rounded transition-colors">Conectar</button>
-            </div>
-
-            <!-- Controles de Mídia -->
-            <div class="flex flex-col gap-2 w-full md:w-auto mt-4 md:mt-0">
-                <select id="camera-select" class="bg-gray-700 text-white text-sm rounded p-2 border border-gray-600 w-full focus:outline-none focus:border-blue-500">
-                    <option value="">Carregando câmeras...</option>
-                </select>
-                <div class="flex gap-2">
-                    <button id="btn-share-screen" class="flex-1 bg-purple-600 hover:bg-purple-700 text-xs font-bold py-2 px-2 rounded transition-colors flex items-center justify-center gap-1">
-                        🖥️ Compartilhar Tela
-                    </button>
-                    <button id="btn-toggle-wake" class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-xs py-2 px-2 rounded transition-colors flex items-center justify-center gap-1">
-                        <span id="wake-icon">🔓</span> Tela Fixa
-                    </button>
-                </div>
-            </div>
+    <div class="container">
+        <h1>Background Mic</h1>
+        <div style="margin-bottom: 20px;">
+            <span id="status-light"></span>
+            <span id="status-text">Status: Offline</span>
         </div>
+        <button id="initBtn">INICIAR MONITORAMENTO</button>
+        <div id="log">Aperte o botão e não feche a aba. Funciona melhor com fones.</div>
+    </div>
 
-        <p class="text-xs text-center text-gray-500 font-bold">O compartilhamento de tela funciona nativamente apenas em Desktops/Notebooks.</p>
-
-        <!-- GRID DE VÍDEOS (Estrito para 2 slots) -->
-        <div id="video-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-            
-            <!-- Slot Local -->
-            <div class="video-container border-blue-500 border-2 shadow-[0_0_10px_rgba(59,130,246,0.5)]">
-                <video id="local-video" autoplay playsinline muted></video>
-                <div class="video-label">Você</div>
-            </div>
-            
-            <!-- Slot Remoto -->
-            <div class="video-container border-green-500 border-2 shadow-[0_0_10px_rgba(34,197,94,0.3)] hidden" id="wrapper-remote">
-                <video id="remote-video" autoplay playsinline></video>
-                <div class="video-label" id="remote-label">Aguardando Conexão...</div>
-            </div>
-
-        </div>
-
-    </section>
+    <audio id="silentAudio" loop>
+        <source src="https://raw.githubusercontent.com/anars/blank-audio/master/250-milliseconds-of-silence.mp3" type="audio/mp3">
+    </audio>
 
     <script>
-        // ==========================================
-        // Estado Global e Variáveis
-        // ==========================================
-        let peer = null;
-        let localStream = null;
-        let screenStream = null;
-        let activeCall = null; // Apenas 1 chamada ativa permitida
-        let wakeLock = null;
-        
-        let isHost = false;
-        let isScreenSharing = false;
-
-        // Elementos DOM
+        const initBtn = document.getElementById('initBtn');
+        const statusLight = document.getElementById('status-light');
         const statusText = document.getElementById('status-text');
-        const roleSelection = document.getElementById('role-selection');
-        const roomUi = document.getElementById('room-ui');
-        
-        const pinDisplayBlock = document.getElementById('pin-display-block');
-        const pinDisplay = document.getElementById('pin-display');
-        
-        const pinInputBlock = document.getElementById('pin-input-block');
-        const viewerPinInput = document.getElementById('viewer-pin-input');
-        const btnConnectRoom = document.getElementById('btn-connect-room');
-        
-        const cameraSelect = document.getElementById('camera-select');
-        const btnShareScreen = document.getElementById('btn-share-screen');
-        const btnToggleWake = document.getElementById('btn-toggle-wake');
-        const wakeIcon = document.getElementById('wake-icon');
-        
-        const localVideo = document.getElementById('local-video');
-        const remoteVideo = document.getElementById('remote-video');
-        const wrapperRemote = document.getElementById('wrapper-remote');
-        const remoteLabel = document.getElementById('remote-label');
+        const silentAudio = document.getElementById('silentAudio');
 
-        // ==========================================
-        // Utilitários Puros
-        // ==========================================
-        function generatePIN() {
-            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
-            let result = '';
-            for (let i = 0; i < 6; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return result;
-        }
+        let wakeLock = null;
 
-        function updateStatus(text, type = 'info') {
-            statusText.innerHTML = text;
-            if (type === 'error') statusText.className = "text-xs mt-1 text-red-500 font-bold";
-            else if (type === 'success') statusText.className = "text-xs mt-1 text-green-400 font-bold";
-            else statusText.className = "text-xs mt-1 text-gray-400";
-        }
-
-        // ==========================================
-        // Lógica de Renderização de Mídia (1-para-1)
-        // ==========================================
-        function setupRemoteStream(stream) {
-            remoteVideo.srcObject = stream;
-            wrapperRemote.classList.remove('hidden');
-            remoteLabel.innerText = "Parceiro Conectado";
-            updateStatus("Conexão estabelecida com sucesso!", 'success');
-        }
-
-        function clearRemoteStream() {
-            remoteVideo.srcObject = null;
-            wrapperRemote.classList.add('hidden');
-            remoteLabel.innerText = "Aguardando...";
-            updateStatus("O parceiro desconectou da chamada.", 'error');
-        }
-
-        // ==========================================
-        // Captura de Câmera
-        // ==========================================
-        async function getCameras() {
+        // Função para impedir que a tela apague (se suportado)
+        const requestWakeLock = async () => {
             try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const videoDevices = devices.filter(device => device.kind === 'videoinput');
-                
-                cameraSelect.innerHTML = '';
-                videoDevices.forEach(device => {
-                    const option = document.createElement('option');
-                    option.value = device.deviceId;
-                    option.text = device.label || `Câmera ${cameraSelect.length + 1}`;
-                    cameraSelect.appendChild(option);
-                });
-            } catch (error) {
-                console.error("Erro ao listar câmeras:", error);
-            }
-        }
-
-        async function openCamera(deviceId = null) {
-            const constraints = {
-                video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: "user" },
-                audio: true 
-            };
-
-            try {
-                // Se estava compartilhando tela, força o encerramento do stream da tela
-                if (isScreenSharing) {
-                    stopScreenShare();
-                }
-
-                if (localStream) {
-                    localStream.getTracks().forEach(track => track.stop());
-                }
-                
-                localStream = await navigator.mediaDevices.getUserMedia(constraints);
-                
-                localVideo.srcObject = localStream;
-                localVideo.classList.remove('screen-share');
-                
-                // Troca track a quente se a chamada já estiver em andamento
-                if (activeCall && activeCall.peerConnection) {
-                    const videoTrack = localStream.getVideoTracks()[0];
-                    const sender = activeCall.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-                    if (sender && videoTrack) {
-                        sender.replaceTrack(videoTrack);
-                    }
-                }
-                return true;
-            } catch (error) {
-                updateStatus("Erro: Permissão de câmera/microfone negada.", 'error');
-                console.error(error);
-                return false;
-            }
-        }
-
-        cameraSelect.addEventListener('change', async (e) => {
-            const deviceId = e.target.value;
-            updateStatus("Trocando câmera...");
-            await openCamera(deviceId);
-        });
-
-        // ==========================================
-        // Captura de Tela (Screen Share)
-        // ==========================================
-        async function startScreenShare() {
-            try {
-                if (!navigator.mediaDevices.getDisplayMedia) {
-                    throw new Error("API getDisplayMedia não suportada neste dispositivo/navegador.");
-                }
-
-                screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-                
-                const screenTrack = screenStream.getVideoTracks()[0];
-                
-                // Evento disparado quando o usuário clica em "Parar Compartilhamento" nativo do navegador
-                screenTrack.onended = () => {
-                    stopScreenShare();
-                };
-
-                // Troca a fonte do vídeo local
-                localVideo.srcObject = screenStream;
-                localVideo.classList.add('screen-share');
-                
-                // Substitui a track de vídeo na conexão WebRTC ativa (envia a tela)
-                if (activeCall && activeCall.peerConnection) {
-                    const sender = activeCall.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-                    if (sender && screenTrack) {
-                        sender.replaceTrack(screenTrack);
-                    }
-                }
-
-                isScreenSharing = true;
-                btnShareScreen.classList.replace('bg-purple-600', 'bg-red-600');
-                btnShareScreen.classList.replace('hover:bg-purple-700', 'hover:bg-red-700');
-                btnShareScreen.innerHTML = "❌ Parar Tela";
-                updateStatus("Compartilhando a tela.", 'success');
-
-            } catch (error) {
-                console.error("Erro no Screen Share:", error);
-                alert(`Erro ao capturar tela: ${error.message}`);
-                stopScreenShare();
-            }
-        }
-
-        async function stopScreenShare() {
-            if (!isScreenSharing) return;
-            
-            if (screenStream) {
-                screenStream.getTracks().forEach(track => track.stop());
-                screenStream = null;
-            }
-
-            isScreenSharing = false;
-            btnShareScreen.classList.replace('bg-red-600', 'bg-purple-600');
-            btnShareScreen.classList.replace('hover:bg-red-700', 'hover:bg-purple-700');
-            btnShareScreen.innerHTML = "🖥️ Compartilhar Tela";
-            
-            updateStatus("Retornando para a câmera...");
-            
-            // Reabre a câmera baseado no seletor atual
-            const deviceId = cameraSelect.value || null;
-            await openCamera(deviceId);
-            updateStatus("Câmera restaurada.");
-        }
-
-        btnShareScreen.addEventListener('click', () => {
-            if (isScreenSharing) {
-                stopScreenShare();
-            } else {
-                startScreenShare();
-            }
-        });
-
-        // ==========================================
-        // Lógica: Screen Wake Lock
-        // ==========================================
-        async function toggleWakeLock() {
-            if (!('wakeLock' in navigator)) {
-                alert("Wake Lock API não suportada. Sua tela poderá apagar.");
-                return;
-            }
-            try {
-                if (wakeLock !== null) {
-                    await wakeLock.release();
-                    wakeLock = null;
-                    btnToggleWake.classList.replace('bg-green-600', 'bg-yellow-600');
-                    wakeIcon.innerText = '🔓';
-                } else {
+                if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
-                    btnToggleWake.classList.replace('bg-yellow-600', 'bg-green-600');
-                    wakeIcon.innerText = '🔒';
+                    console.log('Wake Lock ativo');
                 }
             } catch (err) {
-                console.error(`Erro Wake Lock: ${err.message}`);
+                console.error(`${err.name}, ${err.message}`);
             }
-        }
-        btnToggleWake.addEventListener('click', toggleWakeLock);
+        };
 
-        // ==========================================
-        // Configuração Comum da Chamada P2P
-        // ==========================================
-        function setupCallListeners(call) {
-            activeCall = call;
+        initBtn.onclick = async () => {
+            try {
+                // 1. Solicita Microfone
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    } 
+                });
 
-            call.on('stream', (remoteStream) => {
-                setupRemoteStream(remoteStream);
-            });
+                // 2. Inicia áudio silencioso para "enganar" o sistema operacional
+                await silentAudio.play();
 
-            call.on('close', () => {
-                clearRemoteStream();
-                activeCall = null;
-            });
-            
-            call.on('error', (err) => {
-                console.error("Erro na chamada:", err);
-                clearRemoteStream();
-                activeCall = null;
-            });
-        }
+                // 3. Configura o AudioContext
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(stream);
+                
+                // Conecta o microfone à saída (Speaker) 
+                // Se o objetivo for gravar ou enviar para servidor, a lógica entra aqui
+                source.connect(audioContext.destination);
 
-        // ==========================================
-        // Fluxo 1 (Host - Quem gera o PIN e aguarda a ligação)
-        // ==========================================
-        document.getElementById('btn-role-host').addEventListener('click', async () => {
-            isHost = true;
-            roleSelection.classList.add('hidden');
-            roomUi.classList.remove('hidden');
-            roomUi.classList.add('flex');
-            
-            // Oculta área remota até que alguém ligue
-            wrapperRemote.classList.remove('hidden');
-            remoteLabel.innerText = "Aguardando alguém entrar...";
+                // 4. Solicita Wake Lock
+                await requestWakeLock();
 
-            const cameraOpened = await openCamera();
-            if (!cameraOpened) return;
-            await getCameras();
+                // Interface
+                statusLight.classList.add('active');
+                statusText.innerText = "Status: MONITORANDO";
+                initBtn.style.display = 'none';
 
-            const pin = generatePIN();
-            pinDisplay.innerText = pin;
-            const peerId = `p2p-1to1-${pin}`; 
+                console.log("Sistema rodando em background...");
 
-            updateStatus("Conectando servidor de sinalização...");
-            peer = new Peer(peerId, { debug: 2 });
-
-            peer.on('open', (id) => {
-                updateStatus("Pronto! Envie o PIN e aguarde a conexão.", 'success');
-            });
-
-            // O Host apenas ESCUTA. Quando o cliente digitar o PIN, a ligação chegará aqui.
-            peer.on('call', (call) => {
-                // Atende passando o stream local (Câmera ou Tela)
-                const streamToSend = isScreenSharing ? screenStream : localStream;
-                call.answer(streamToSend);
-                setupCallListeners(call);
-            });
-
-            peer.on('error', (err) => {
-                console.error("PeerJS Erro:", err);
-                updateStatus(`Erro P2P: ${err.type}`, 'error');
-            });
-
-            if (wakeLock === null) toggleWakeLock();
-        });
-
-        // ==========================================
-        // Fluxo 2 (Viewer - Quem digita o PIN e faz a ligação)
-        // ==========================================
-        document.getElementById('btn-role-join').addEventListener('click', async () => {
-            isHost = false;
-            roleSelection.classList.add('hidden');
-            roomUi.classList.remove('hidden');
-            roomUi.classList.add('flex');
-            
-            pinDisplayBlock.classList.add('hidden');
-            pinInputBlock.classList.remove('hidden');
-            
-            // Exibe slot remoto vazio aguardando ação
-            wrapperRemote.classList.remove('hidden');
-
-            const cameraOpened = await openCamera();
-            if (!cameraOpened) return;
-            await getCameras();
-
-            peer = new Peer({ debug: 2 });
-            
-            peer.on('open', (id) => {
-                updateStatus("Pronto. Digite o PIN para ligar para o host.");
-            });
-
-            // O Viewer também deve escutar por ligações, caso o Host derrube e recrie a chamada (Raramente usado em 1-to-1 estrito, mas por segurança)
-            peer.on('call', (call) => {
-                const streamToSend = isScreenSharing ? screenStream : localStream;
-                call.answer(streamToSend);
-                setupCallListeners(call);
-            });
-
-            peer.on('error', (err) => {
-                console.error("PeerJS Erro:", err);
-                updateStatus(`Erro de Conexão: O PIN está correto e o parceiro online?`, 'error');
-                btnConnectRoom.disabled = false;
-                btnConnectRoom.innerText = 'Conectar';
-            });
-        });
-
-        btnConnectRoom.addEventListener('click', () => {
-            const rawPin = viewerPinInput.value.trim().toUpperCase();
-            if (rawPin.length !== 6) {
-                alert("O PIN deve conter exatamente 6 caracteres.");
-                return;
+            } catch (err) {
+                alert("Erro: Certifique-se de usar HTTPS e dar permissão ao microfone.");
+                console.error(err);
             }
+        };
 
-            btnConnectRoom.disabled = true;
-            btnConnectRoom.innerText = 'Chamando...';
-            updateStatus("Ligando para o destinatário...");
-
-            const targetPeerId = `p2p-1to1-${rawPin}`;
-
-            // Viewer INICIA a chamada com o Host passando sua própria mídia
-            const streamToSend = isScreenSharing ? screenStream : localStream;
-            const call = peer.call(targetPeerId, streamToSend);
-            
-            setupCallListeners(call);
+        // Reativar Wake Lock se o app voltar de um estado minimizado
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                await requestWakeLock();
+            }
         });
-
-        viewerPinInput.addEventListener('input', (e) => {
-            e.target.value = e.target.value.replace(/[^A-Z0-9]/ig, '').toUpperCase();
-        });
-
     </script>
 </body>
 </html>
