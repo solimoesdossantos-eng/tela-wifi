@@ -3,462 +3,438 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebRTC Screen Caster - Multimídia</title>
+    <title>Comunicação Sigilosa E2EE (Acesso Direto)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        button:active { transform: scale(0.98); }
-        input[type="number"]::-webkit-inner-spin-button, 
-        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        
-        #videoContainer:fullscreen, #videoContainer:-webkit-full-screen {
-            background-color: black;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        /* Ocultar scrollbars para melhor UX em painéis de status */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .glass { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(10px); }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
+<body class="bg-gray-900 text-white h-screen overflow-hidden flex items-center justify-center font-sans">
 
-    <!-- Áudio do Tablet tocando no Notebook (oculto) -->
-    <audio id="remoteTabletAudio" autoplay class="hidden"></audio>
-
-    <header class="bg-slate-800 p-4 shadow-md border-b border-slate-700 z-10 relative">
-        <h1 class="text-2xl font-bold text-center text-blue-400">Monitor Estendido Multimídia</h1>
-        <p class="text-center text-sm text-slate-400 mt-1">Vídeo Dinâmico e Áudio Bidirecional (P2P)</p>
-    </header>
-
-    <main class="flex-1 max-w-6xl w-full mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-8 z-10 relative">
+    <!-- Tela de Login / Entrada na Sala -->
+    <div id="login-screen" class="w-full max-w-sm p-8 glass rounded-2xl border border-gray-700 shadow-2xl transition-all duration-300 z-10">
+        <div class="text-center mb-8">
+            <i class="fas fa-user-secret text-5xl text-emerald-500 mb-4"></i>
+            <h1 class="text-3xl font-bold tracking-tight">Acesso Restrito</h1>
+            <p class="text-gray-400 mt-2 text-sm">Insira a credencial de acesso</p>
+        </div>
         
-        <!-- ========================================== -->
-        <!-- PAINEL DO NOTEBOOK (TRANSMISSOR)           -->
-        <!-- ========================================== -->
-        <section class="flex-1 bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700 flex flex-col">
-            <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
-                <span class="bg-blue-500 w-3 h-3 rounded-full"></span>
-                1. Notebook (Transmissor)
-            </h2>
-            
-            <div class="space-y-6 flex-1">
-                
-                <!-- Controles Pré-Conexão -->
-                <div id="notebookPreConnect">
-                    <p class="text-sm text-slate-300 mb-4">Inicie a transmissão da tela. O navegador pedirá permissão para a tela e para o microfone.</p>
-                    <button id="btnStartCapture" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-4 rounded-lg transition-colors text-lg shadow-md">
-                        Iniciar Transmissão e Criar Sala
-                    </button>
-                </div>
-
-                <!-- Painel Pós-Conexão (PIN e Controles Multimídia) -->
-                <div id="notebookPostConnect" class="hidden flex flex-col space-y-4">
-                    
-                    <div class="flex flex-col items-center justify-center p-4 bg-slate-900 rounded-lg border border-slate-700">
-                        <span class="text-slate-400 text-xs mb-1">PIN DA SALA:</span>
-                        <div id="roomPinDisplay" class="text-4xl font-mono font-bold text-emerald-400 tracking-widest">00000</div>
-                    </div>
-
-                    <div class="bg-slate-900 rounded-lg p-4 border border-slate-700 space-y-3">
-                        <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-2">Controles da Tela</h3>
-                        
-                        <button id="btnChangeScreen" class="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-sm font-medium py-3 px-4 rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50" disabled>
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
-                            Trocar Tela Exibida (Sem Desconectar)
-                        </button>
-
-                        <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mt-4 mb-2">Áudio do Notebook</h3>
-                        
-                        <button id="btnTogglePCMic" class="w-full bg-red-900/50 hover:bg-red-800 border border-red-700 text-red-200 text-sm font-medium py-3 px-4 rounded transition-colors flex items-center justify-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-                            Microfone PC: MUTADO
-                        </button>
-                    </div>
-
-                </div>
+        <form id="login-form" class="space-y-5">
+            <div>
+                <input type="password" id="room-password" required class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-4 text-center text-xl tracking-widest text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors" placeholder="•••••••">
             </div>
-            
-            <div id="transmitterStatus" class="mt-6 text-sm text-center text-slate-400">Aguardando início...</div>
-        </section>
+            <button type="submit" id="join-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition-colors flex items-center justify-center gap-2">
+                <i class="fas fa-sign-in-alt"></i> Acessar
+            </button>
+            <p id="login-error" class="text-red-400 text-sm text-center hidden"></p>
+        </form>
+    </div>
 
-        <!-- ========================================== -->
-        <!-- PAINEL DO TABLET (RECEPTOR)                -->
-        <!-- ========================================== -->
-        <section class="flex-1 bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700 flex flex-col">
-            <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
-                <span class="bg-purple-500 w-3 h-3 rounded-full"></span>
-                2. Tablet (Receptor)
-            </h2>
-
-            <div class="space-y-4 flex-1 flex flex-col">
-                
-                <div id="tabletConnectArea" class="flex gap-2">
-                    <input type="number" id="pinInput" class="flex-1 bg-slate-900 border border-slate-600 rounded-lg p-4 text-2xl text-center text-white font-mono tracking-widest focus:outline-none focus:border-purple-500 placeholder-slate-600" placeholder="PIN" maxlength="5">
-                    <button id="btnConnect" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 px-6 rounded-lg transition-colors shadow-md">
-                        Conectar
+    <!-- Interface Principal do Chat -->
+    <div id="chat-screen" class="hidden w-full h-full flex flex-col md:flex-row relative">
+        
+        <!-- Área principal de Chat -->
+        <div class="flex-1 flex flex-col h-full bg-gray-900 border-r border-gray-800 relative z-0">
+            <!-- Header -->
+            <header class="bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center shadow-md">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-emerald-900 rounded-full flex items-center justify-center border border-emerald-500">
+                        <i class="fas fa-shield-alt text-emerald-400"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-lg leading-tight">Canal Seguro</h2>
+                        <p id="user-identity" class="text-xs text-emerald-400 flex items-center gap-1">
+                            <i class="fas fa-user-tag text-[10px]"></i> Identidade Gerada
+                        </p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button id="btn-leave" class="p-3 text-red-400 hover:text-red-300 hover:bg-gray-700 rounded-full transition-colors" title="Sair e Destruir Sessão">
+                        <i class="fas fa-sign-out-alt"></i> Sair
                     </button>
                 </div>
-                
-                <!-- Controles de Áudio do Tablet (Exibido após conectar) -->
-                <div id="tabletAudioControls" class="hidden bg-slate-900 rounded-lg p-3 border border-slate-700">
-                    <button id="btnToggleTabletMic" class="w-full bg-red-900/50 hover:bg-red-800 border border-red-700 text-red-200 text-sm font-medium py-2 px-4 rounded transition-colors flex items-center justify-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-                        Microfone Tablet: MUTADO
-                    </button>
-                </div>
+            </header>
 
-                <div id="receiverStatus" class="text-sm text-center text-slate-400">Pronto para conectar.</div>
-
-                <!-- Video Player Container -->
-                <div id="videoContainer" class="mt-2 flex-1 bg-black rounded-lg overflow-hidden border border-slate-700 relative flex items-center justify-center min-h-[300px]">
-                    <span id="videoPlaceholder" class="text-slate-500 text-sm absolute z-10 pointer-events-none">A tela aparecerá aqui</span>
-                    
-                    <!-- O Video do tablet recebe o Stream de Vídeo + Áudio do PC -->
-                    <video id="remoteVideo" autoplay playsinline class="w-full h-full object-contain hidden z-0"></video>
-                    
-                    <button id="btnFullscreen" class="hidden absolute bottom-4 right-4 bg-slate-800/80 hover:bg-slate-700 text-white p-3 rounded-lg backdrop-blur-sm transition-colors z-20 shadow-lg border border-slate-600" title="Alternar Tela Cheia">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
-                    </button>
+            <!-- Lista de Mensagens -->
+            <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+                <div class="text-center text-xs text-gray-500 my-4">
+                    <i class="fas fa-lock"></i> As mensagens são criptografadas de ponta-a-ponta.<br>Apenas quem possui a senha pode decifrá-las.
                 </div>
+                <!-- Mensagens renderizadas dinamicamente aqui -->
             </div>
-        </section>
 
-    </main>
+            <!-- Input Area -->
+            <div class="bg-gray-800 border-t border-gray-700 p-4">
+                <form id="message-form" class="flex items-center gap-2">
+                    <input type="text" id="message-input" autocomplete="off" required class="flex-1 bg-gray-700 border-none rounded-full px-6 py-3 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors" placeholder="Digite sua mensagem...">
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white w-12 h-12 flex items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 
-    <script>
-        class ScreenCasterApp {
-            constructor() {
-                // Elementos do Notebook (Transmissor)
-                this.btnStartCapture = document.getElementById('btnStartCapture');
-                this.notebookPreConnect = document.getElementById('notebookPreConnect');
-                this.notebookPostConnect = document.getElementById('notebookPostConnect');
-                this.roomPinDisplay = document.getElementById('roomPinDisplay');
-                this.transmitterStatus = document.getElementById('transmitterStatus');
-                this.btnChangeScreen = document.getElementById('btnChangeScreen');
-                this.btnTogglePCMic = document.getElementById('btnTogglePCMic');
-                this.remoteTabletAudio = document.getElementById('remoteTabletAudio');
+    <!-- Modal de Alerta Customizado -->
+    <div id="custom-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 max-w-sm w-full shadow-2xl">
+            <h3 id="modal-title" class="text-xl font-bold mb-2">Atenção</h3>
+            <p id="modal-message" class="text-gray-300 mb-6"></p>
+            <div class="flex justify-end">
+                <button id="btn-modal-close" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium">Entendido</button>
+            </div>
+        </div>
+    </div>
 
-                // Elementos do Tablet (Receptor)
-                this.pinInput = document.getElementById('pinInput');
-                this.btnConnect = document.getElementById('btnConnect');
-                this.tabletConnectArea = document.getElementById('tabletConnectArea');
-                this.tabletAudioControls = document.getElementById('tabletAudioControls');
-                this.btnToggleTabletMic = document.getElementById('btnToggleTabletMic');
-                this.receiverStatus = document.getElementById('receiverStatus');
-                this.remoteVideo = document.getElementById('remoteVideo');
-                this.videoPlaceholder = document.getElementById('videoPlaceholder');
-                this.videoContainer = document.getElementById('videoContainer');
-                this.btnFullscreen = document.getElementById('btnFullscreen');
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-                // Estado Interno
-                this.peer = null;
-                this.activeCall = null; 
-                this.namespace = 'scrcast-v6-'; 
+        // ==========================================
+        // CONFIGURAÇÃO DO AMBIENTE E FIREBASE
+        // ==========================================
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-secure-direct-chat-app';
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Constantes estritas definidas na regra de negócio
+        const REQUIRED_PASSWORD = "9090123";
+        const HARDCODED_ROOM_ID = "sala_secreta_9090123";
+
+        // ==========================================
+        // ESTADO GLOBAL DA APLICAÇÃO
+        // ==========================================
+        const state = {
+            user: null,
+            username: '',
+            roomId: HARDCODED_ROOM_ID,
+            cryptoKey: null,
+            messagesUnsubscribe: null
+        };
+
+        // ==========================================
+        // MOTOR CRIPTOGRÁFICO (E2EE Web Crypto API)
+        // ==========================================
+        
+        async function deriveKey(password, saltString) {
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                "raw",
+                enc.encode(password),
+                { name: "PBKDF2" },
+                false,
+                ["deriveBits", "deriveKey"]
+            );
+            
+            const salt = enc.encode(saltString);
+            
+            return crypto.subtle.deriveKey(
+                {
+                    name: "PBKDF2",
+                    salt: salt,
+                    iterations: 100000,
+                    hash: "SHA-256"
+                },
+                keyMaterial,
+                { name: "AES-GCM", length: 256 },
+                true,
+                ["encrypt", "decrypt"]
+            );
+        }
+
+        async function encryptData(dataString, key) {
+            const enc = new TextEncoder();
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const encodedData = enc.encode(dataString);
+            
+            const ciphertext = await crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: iv },
+                key,
+                encodedData
+            );
+            
+            return {
+                ciphertext: arrayBufferToBase64(ciphertext),
+                iv: arrayBufferToBase64(iv)
+            };
+        }
+
+        async function decryptData(ciphertextBase64, ivBase64, key) {
+            try {
+                const ciphertext = base64ToArrayBuffer(ciphertextBase64);
+                const iv = base64ToArrayBuffer(ivBase64);
                 
-                // Streams Locais
-                this.pcCombinedStream = new MediaStream(); // Tela + Mic do PC
-                this.pcScreenTrack = null;
-                this.pcMicTrack = null;
+                const decryptedData = await crypto.subtle.decrypt(
+                    { name: "AES-GCM", iv: iv },
+                    key,
+                    ciphertext
+                );
                 
-                this.tabletMicStream = null;
-                this.tabletMicTrack = null;
-
-                // Controle de Estado dos Microfones
-                this.pcMicEnabled = false;
-                this.tabletMicEnabled = false;
-
-                this.bindEvents();
-            }
-
-            bindEvents() {
-                // Eventos Notebook
-                this.btnStartCapture.addEventListener('click', () => this.initTransmitter());
-                this.btnChangeScreen.addEventListener('click', () => this.changeScreen());
-                this.btnTogglePCMic.addEventListener('click', () => this.togglePCMic());
-
-                // Eventos Tablet
-                this.btnConnect.addEventListener('click', () => this.initReceiver());
-                this.pinInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') this.initReceiver();
-                });
-                this.pinInput.addEventListener('input', (e) => {
-                    if(e.target.value.length > 5) e.target.value = e.target.value.slice(0,5);
-                });
-                this.btnToggleTabletMic.addEventListener('click', () => this.toggleTabletMic());
-
-                // UI
-                this.btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
-            }
-
-            updateStatus(element, msg, isError = false) {
-                element.textContent = msg;
-                element.className = `mt-2 text-sm text-center font-medium ${isError ? 'text-red-400' : 'text-blue-400'}`;
-            }
-
-            // ==========================================
-            // TRANSMISSOR: NOTEBOOK LOGIC
-            // ==========================================
-            async initTransmitter() {
-                try {
-                    // 1. Obtém a Tela
-                    this.updateStatus(this.transmitterStatus, 'Solicitando permissão de tela...');
-                    const screenStream = await navigator.mediaDevices.getDisplayMedia({
-                        video: { cursor: "always" },
-                        audio: false // Pegaremos o microfone separadamente
-                    });
-                    this.pcScreenTrack = screenStream.getVideoTracks()[0];
-                    this.pcCombinedStream.addTrack(this.pcScreenTrack);
-
-                    // Lida com o botão nativo "Parar compartilhamento"
-                    this.pcScreenTrack.onended = () => {
-                        this.updateStatus(this.transmitterStatus, 'Compartilhamento nativo encerrado.', true);
-                        if(this.peer) this.peer.destroy();
-                        this.notebookPostConnect.classList.add('hidden');
-                        this.notebookPreConnect.classList.remove('hidden');
-                        if (this.pcMicTrack) this.pcMicTrack.stop();
-                    };
-
-                    // 2. Obtém o Microfone do PC (Silencioso para o SO, pede permissão)
-                    try {
-                        this.updateStatus(this.transmitterStatus, 'Solicitando permissão de microfone...');
-                        const micStream = await navigator.mediaDevices.getUserMedia({
-                            audio: { echoCancellation: true, noiseSuppression: true }
-                        });
-                        this.pcMicTrack = micStream.getAudioTracks()[0];
-                        // Inicia MUTADO para evitar microfonia imediata
-                        this.pcMicTrack.enabled = false;
-                        this.pcCombinedStream.addTrack(this.pcMicTrack);
-                    } catch (micErr) {
-                        console.warn("Microfone do PC negado ou indisponível.", micErr);
-                        this.btnTogglePCMic.disabled = true;
-                        this.btnTogglePCMic.textContent = "Mic indisponível/Negado";
-                    }
-
-                    // 3. Inicializa Sinalização
-                    const pin = Math.floor(10000 + Math.random() * 90000);
-                    const roomId = `${this.namespace}${pin}`;
-
-                    this.updateStatus(this.transmitterStatus, 'Criando sala no servidor...');
-                    this.peer = new Peer(roomId, { debug: 2 });
-
-                    this.peer.on('open', () => {
-                        this.notebookPreConnect.classList.add('hidden');
-                        this.notebookPostConnect.classList.remove('hidden');
-                        this.roomPinDisplay.textContent = pin;
-                        this.updateStatus(this.transmitterStatus, 'Sala criada! Aguardando tablet...');
-                    });
-
-                    this.peer.on('error', (err) => {
-                        this.updateStatus(this.transmitterStatus, `Erro de rede: ${err.type}`, true);
-                    });
-
-                    // 4. Quando o tablet conectar
-                    this.peer.on('connection', (conn) => {
-                        this.updateStatus(this.transmitterStatus, 'Tablet conectado! Iniciando túnel A/V...', false);
-                        
-                        conn.on('open', () => {
-                            // Liga para o tablet enviando o Stream Combinado (Tela + Mic)
-                            this.activeCall = this.peer.call(conn.peer, this.pcCombinedStream);
-                            this.btnChangeScreen.disabled = false;
-
-                            this.activeCall.on('error', () => this.updateStatus(this.transmitterStatus, 'Erro no stream.', true));
-                            
-                            // Se o tablet enviar seu microfone de volta, ouvimos aqui
-                            this.activeCall.on('stream', (tabletRemoteStream) => {
-                                this.remoteTabletAudio.srcObject = tabletRemoteStream;
-                            });
-                        });
-                    });
-
-                } catch (error) {
-                    console.error("Erro inicialização Transmissor:", error);
-                    this.updateStatus(this.transmitterStatus, 'Permissão negada ou captura cancelada.', true);
-                }
-            }
-
-            // Realiza a troca da tela sem derrubar o WebRTC
-            async changeScreen() {
-                if (!this.activeCall) return;
-
-                try {
-                    this.btnChangeScreen.disabled = true;
-                    this.updateStatus(this.transmitterStatus, 'Solicitando nova tela...');
-                    
-                    // Pede uma nova tela ao SO
-                    const newScreenStream = await navigator.mediaDevices.getDisplayMedia({
-                        video: { cursor: "always" },
-                        audio: false
-                    });
-                    
-                    const newVideoTrack = newScreenStream.getVideoTracks()[0];
-
-                    // Substitui a track diretamente no túnel WebRTC (RTCPeerConnection)
-                    const sender = this.activeCall.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-                    
-                    if (sender) {
-                        await sender.replaceTrack(newVideoTrack);
-                        
-                        // Para a track antiga para limpar o ícone de gravação do navegador
-                        if (this.pcScreenTrack) this.pcScreenTrack.stop();
-                        
-                        // Atualiza a referência
-                        this.pcScreenTrack = newVideoTrack;
-                        
-                        // Re-assina evento de encerramento nativo
-                        this.pcScreenTrack.onended = () => {
-                            this.updateStatus(this.transmitterStatus, 'Compartilhamento nativo encerrado.', true);
-                            if(this.peer) this.peer.destroy();
-                            this.notebookPostConnect.classList.add('hidden');
-                            this.notebookPreConnect.classList.remove('hidden');
-                        };
-
-                        this.updateStatus(this.transmitterStatus, 'Tela trocada com sucesso!', false);
-                    }
-                } catch (err) {
-                    console.error("Erro ao trocar tela:", err);
-                    this.updateStatus(this.transmitterStatus, 'Troca de tela cancelada.', true);
-                } finally {
-                    this.btnChangeScreen.disabled = false;
-                }
-            }
-
-            togglePCMic() {
-                if (!this.pcMicTrack) return;
-                
-                this.pcMicEnabled = !this.pcMicEnabled;
-                this.pcMicTrack.enabled = this.pcMicEnabled; // Ativa/Muta via hardware, sem afetar SDP
-
-                if (this.pcMicEnabled) {
-                    this.btnTogglePCMic.className = "w-full bg-green-900/50 hover:bg-green-800 border border-green-700 text-green-200 text-sm font-medium py-3 px-4 rounded transition-colors flex items-center justify-center gap-2";
-                    this.btnTogglePCMic.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg> Microfone PC: ENVIANDO`;
-                } else {
-                    this.btnTogglePCMic.className = "w-full bg-red-900/50 hover:bg-red-800 border border-red-700 text-red-200 text-sm font-medium py-3 px-4 rounded transition-colors flex items-center justify-center gap-2";
-                    this.btnTogglePCMic.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg> Microfone PC: MUTADO`;
-                }
-            }
-
-
-            // ==========================================
-            // RECEPTOR: TABLET LOGIC
-            // ==========================================
-            async initReceiver() {
-                const pin = this.pinInput.value.trim();
-                if (pin.length !== 5) return;
-
-                this.btnConnect.disabled = true;
-                this.btnConnect.classList.add('opacity-50');
-                this.updateStatus(this.receiverStatus, 'Solicitando microfone do Tablet...');
-
-                try {
-                    // Pede o microfone do tablet primeiro para poder enviar na resposta
-                    this.tabletMicStream = await navigator.mediaDevices.getUserMedia({
-                        audio: { echoCancellation: true, noiseSuppression: true }
-                    });
-                    this.tabletMicTrack = this.tabletMicStream.getAudioTracks()[0];
-                    this.tabletMicTrack.enabled = false; // Inicia mutado
-                    
-                    this.updateStatus(this.receiverStatus, 'Conectando ao servidor...');
-
-                } catch (micErr) {
-                    console.warn("Microfone do Tablet negado/indisponível", micErr);
-                    this.tabletMicStream = new MediaStream(); // Stream vazio se falhar
-                    this.btnToggleTabletMic.disabled = true;
-                    this.btnToggleTabletMic.textContent = "Mic indisponível";
-                }
-
-                this.peer = new Peer({ debug: 2 });
-
-                this.peer.on('open', () => {
-                    const roomId = `${this.namespace}${pin}`;
-                    const conn = this.peer.connect(roomId);
-                    
-                    conn.on('open', () => {
-                        this.updateStatus(this.receiverStatus, 'Sincronizado. Aguardando vídeo do PC...', false);
-                    });
-
-                    conn.on('error', () => {
-                         this.updateStatus(this.receiverStatus, 'Falha de conexão.', true);
-                         this.resetTabletConnectBtn();
-                    });
-                });
-
-                // Quando o PC ligar enviando o vídeo
-                this.peer.on('call', (call) => {
-                    this.activeCall = call;
-                    
-                    // Atende a chamada enviando o Microfone do Tablet de volta
-                    call.answer(this.tabletMicStream); 
-                    
-                    call.on('stream', (pcRemoteStream) => {
-                        this.updateStatus(this.receiverStatus, 'Conectado! Transmissão Ativa.', false);
-                        
-                        this.tabletConnectArea.classList.add('hidden');
-                        this.tabletAudioControls.classList.remove('hidden');
-                        
-                        this.videoPlaceholder.classList.add('hidden');
-                        this.remoteVideo.classList.remove('hidden');
-                        this.btnFullscreen.classList.remove('hidden');
-                        
-                        if (this.remoteVideo.srcObject !== pcRemoteStream) {
-                            this.remoteVideo.srcObject = pcRemoteStream;
-                        }
-                    });
-
-                    call.on('close', () => {
-                        this.updateStatus(this.receiverStatus, 'Conexão encerrada pelo PC.', true);
-                        this.resetTabletView();
-                    });
-                });
-            }
-
-            toggleTabletMic() {
-                if (!this.tabletMicTrack) return;
-                
-                this.tabletMicEnabled = !this.tabletMicEnabled;
-                this.tabletMicTrack.enabled = this.tabletMicEnabled;
-
-                if (this.tabletMicEnabled) {
-                    this.btnToggleTabletMic.className = "w-full bg-green-900/50 hover:bg-green-800 border border-green-700 text-green-200 text-sm font-medium py-2 px-4 rounded transition-colors flex items-center justify-center gap-2";
-                    this.btnToggleTabletMic.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg> Microfone Tablet: ENVIANDO`;
-                } else {
-                    this.btnToggleTabletMic.className = "w-full bg-red-900/50 hover:bg-red-800 border border-red-700 text-red-200 text-sm font-medium py-2 px-4 rounded transition-colors flex items-center justify-center gap-2";
-                    this.btnToggleTabletMic.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg> Microfone Tablet: MUTADO`;
-                }
-            }
-
-            resetTabletConnectBtn() {
-                this.btnConnect.disabled = false;
-                this.btnConnect.classList.remove('opacity-50');
-            }
-
-            resetTabletView() {
-                this.remoteVideo.classList.add('hidden');
-                this.btnFullscreen.classList.add('hidden');
-                this.videoPlaceholder.classList.remove('hidden');
-                this.tabletConnectArea.classList.remove('hidden');
-                this.tabletAudioControls.classList.add('hidden');
-                this.resetTabletConnectBtn();
-            }
-
-            toggleFullscreen() {
-                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                    if (this.videoContainer.requestFullscreen) this.videoContainer.requestFullscreen();
-                    else if (this.videoContainer.webkitRequestFullscreen) this.videoContainer.webkitRequestFullscreen();
-                } else {
-                    if (document.exitFullscreen) document.exitFullscreen();
-                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-                }
+                const dec = new TextDecoder();
+                return dec.decode(decryptedData);
+            } catch (error) {
+                console.error("Erro na descriptografia:", error);
+                return "[Mensagem Ilegível - Dados Corrompidos]";
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            new ScreenCasterApp();
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
+        }
+
+        function base64ToArrayBuffer(base64) {
+            const binary_string = window.atob(base64);
+            const len = binary_string.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary_string.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        // ==========================================
+        // UI & UTILITÁRIOS GERAIS
+        // ==========================================
+        function showModal(title, message) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        document.getElementById('btn-modal-close').addEventListener('click', () => {
+            document.getElementById('custom-modal').classList.add('hidden');
         });
+
+        function scrollToBottom() {
+            const container = document.getElementById('messages-container');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // ==========================================
+        // AUTENTICAÇÃO E INICIALIZAÇÃO
+        // ==========================================
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Erro na autenticação Firebase:", error);
+                showModal("Erro Crítico", "Não foi possível estabelecer conexão segura com o servidor.");
+            }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            state.user = user;
+        });
+
+        initAuth();
+
+        // ==========================================
+        // LÓGICA DE LOGIN ESTREITO (Apenas Senha)
+        // ==========================================
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const btn = document.getElementById('join-btn');
+            const errorP = document.getElementById('login-error');
+            const passwordInput = document.getElementById('room-password').value;
+
+            // Verificação hardcoded exigida
+            if (passwordInput !== REQUIRED_PASSWORD) {
+                errorP.textContent = "Acesso Negado. Credencial inválida.";
+                errorP.classList.remove('hidden');
+                document.getElementById('room-password').value = '';
+                return;
+            }
+
+            if (!state.user) {
+                errorP.textContent = "Aguardando conexão de rede. Tente novamente.";
+                errorP.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Autenticando...';
+            errorP.classList.add('hidden');
+
+            try {
+                // Deriva a chave criptográfica usando a senha e a sala hardcoded
+                state.cryptoKey = await deriveKey(passwordInput, state.roomId);
+                
+                // Gera identidade aleatória local
+                state.username = `Agente-${Math.floor(Math.random() * 9000) + 1000}`;
+
+                // Transição de tela
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('chat-screen').classList.remove('hidden');
+                
+                // Atualiza UI com a identidade
+                document.getElementById('user-identity').innerHTML = `<i class="fas fa-user-tag text-[10px]"></i> Identidade: ${state.username}`;
+
+                // Inicia a escuta do banco de dados
+                startChatListener();
+
+            } catch (error) {
+                console.error(error);
+                errorP.textContent = "Erro interno no motor criptográfico.";
+                errorP.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Acessar';
+            }
+        });
+
+        // ==========================================
+        // LÓGICA DO CHAT (ENVIO E RECEBIMENTO)
+        // ==========================================
+        
+        function getChatCollectionPath() {
+            return collection(db, 'artifacts', appId, 'public', 'data', state.roomId);
+        }
+
+        async function startChatListener() {
+            if (!state.user) return;
+
+            const q = query(getChatCollectionPath()); 
+
+            state.messagesUnsubscribe = onSnapshot(q, async (snapshot) => {
+                const container = document.getElementById('messages-container');
+                
+                // Ordenação na memória
+                let docsData = [];
+                snapshot.forEach(doc => {
+                    docsData.push({ id: doc.id, ...doc.data() });
+                });
+                
+                docsData.sort((a, b) => {
+                    const timeA = a.timestamp ? a.timestamp.toMillis() : Date.now();
+                    const timeB = b.timestamp ? b.timestamp.toMillis() : Date.now();
+                    return timeA - timeB;
+                });
+
+                container.innerHTML = `<div class="text-center text-xs text-gray-500 my-4"><i class="fas fa-lock"></i> Canal Estabelecido. Proteção E2EE ativa.</div>`;
+
+                for (const msgData of docsData) {
+                    if (!msgData.ciphertext || !msgData.iv) continue;
+
+                    const decryptedPayloadStr = await decryptData(msgData.ciphertext, msgData.iv, state.cryptoKey);
+                    
+                    try {
+                        const payload = JSON.parse(decryptedPayloadStr);
+                        renderMessage(msgData.id, payload.content, msgData.senderId === state.user.uid, msgData.senderName);
+                    } catch (e) {
+                        renderMessage(msgData.id, '[Erro de Decifragem]', msgData.senderId === state.user.uid, msgData.senderName);
+                    }
+                }
+                scrollToBottom();
+
+            }, (error) => {
+                console.error("Erro na escuta do Firestore:", error);
+                showModal("Desconexão", "A sincronização com a rede falhou.");
+            });
+        }
+
+        function renderMessage(id, textContent, isMine, senderName) {
+            const container = document.getElementById('messages-container');
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex flex-col ${isMine ? 'items-end' : 'items-start'} mb-4 animate-fade-in`;
+
+            const nameDiv = document.createElement('div');
+            nameDiv.className = "text-xs text-gray-400 mb-1 px-1";
+            nameDiv.textContent = isMine ? "Você" : senderName;
+            wrapper.appendChild(nameDiv);
+
+            const bubble = document.createElement('div');
+            bubble.className = `max-w-[85%] rounded-2xl px-4 py-2 shadow-md ${isMine ? 'bg-emerald-600 text-white rounded-tr-none' : 'bg-gray-700 text-white rounded-tl-none'}`;
+            
+            // Tratamento rigoroso XSS
+            const p = document.createElement('p');
+            p.className = "break-words whitespace-pre-wrap";
+            p.textContent = textContent;
+            bubble.appendChild(p);
+
+            wrapper.appendChild(bubble);
+            container.appendChild(wrapper);
+        }
+
+        async function sendMessage(textContent) {
+            if (!state.user) return;
+            
+            const payloadStr = JSON.stringify({ content: textContent });
+            const { ciphertext, iv } = await encryptData(payloadStr, state.cryptoKey);
+
+            try {
+                await addDoc(getChatCollectionPath(), {
+                    ciphertext: ciphertext,
+                    iv: iv,
+                    senderId: state.user.uid,
+                    senderName: state.username,
+                    timestamp: serverTimestamp()
+                });
+            } catch (error) {
+                console.error("Erro ao enviar:", error);
+                showModal("Erro de Transmissão", "Falha ao enviar pacote criptografado.");
+            }
+        }
+
+        document.getElementById('message-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            
+            if (text) {
+                await sendMessage(text);
+            }
+            
+            input.value = '';
+            input.focus();
+        });
+
+        // ==========================================
+        // SAIR DA SALA
+        // ==========================================
+        document.getElementById('btn-leave').addEventListener('click', () => {
+            state.cryptoKey = null;
+            
+            if (state.messagesUnsubscribe) state.messagesUnsubscribe();
+
+            document.getElementById('messages-container').innerHTML = '';
+            document.getElementById('chat-screen').classList.add('hidden');
+            
+            const loginScreen = document.getElementById('login-screen');
+            loginScreen.classList.remove('hidden');
+            
+            const btn = document.getElementById('join-btn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Acessar';
+            document.getElementById('room-password').value = '';
+        });
+
+        const style = document.createElement('style');
+        style.innerHTML = `
+            .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        `;
+        document.head.appendChild(style);
+
     </script>
 </body>
 </html>
