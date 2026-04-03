@@ -99,14 +99,59 @@
         import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ==========================================
+        // UI & UTILITÁRIOS GERAIS
+        // ==========================================
+        function showModal(title, message) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        document.getElementById('btn-modal-close').addEventListener('click', () => {
+            document.getElementById('custom-modal').classList.add('hidden');
+        });
+
+        function scrollToBottom() {
+            const container = document.getElementById('messages-container');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // ==========================================
         // CONFIGURAÇÃO DO AMBIENTE E FIREBASE
         // ==========================================
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-secure-direct-chat-app';
         
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        // ATENÇÃO: Para rodar em produção (GitHub Pages), substitua os valores abaixo 
+        // pelas credenciais geradas no painel do seu projeto Firebase.
+        const defaultExternalConfig = {
+ apiKey: "AIzaSyBGTSOsg6JcdelyoSPc0MLjQmr0jxwUVdk",
+  authDomain: "studio-2554807183-f68d5.firebaseapp.com",
+  projectId: "studio-2554807183-f68d5",
+  storageBucket: "studio-2554807183-f68d5.firebasestorage.app",
+  messagingSenderId: "584439934606",
+  appId: "1:584439934606:web:a8289e45da870be89363df"
+        };
+
+        const isRunningInCanvas = typeof __firebase_config !== 'undefined';
+        const firebaseConfig = isRunningInCanvas ? JSON.parse(__firebase_config) : defaultExternalConfig;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-secure-direct-chat-app';
+
+        let app, auth, db;
+        let isFirebaseInitialized = false;
+
+        // Validação estrita para evitar crash silencioso fora do Canvas
+        if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("COLOQUE_SUA_API_KEY")) {
+            console.error("Firebase não configurado para ambiente de produção.");
+            setTimeout(() => {
+                showModal("Falta de Configuração", "O aplicativo requer infraestrutura (Firebase) para operar. Edite o arquivo HTML e insira suas credenciais no objeto 'defaultExternalConfig'.");
+                document.getElementById('join-btn').disabled = true;
+                document.getElementById('join-btn').classList.replace('bg-emerald-600', 'bg-gray-600');
+            }, 500);
+        } else {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            isFirebaseInitialized = true;
+        }
 
         // Constantes estritas definidas na regra de negócio
         const REQUIRED_PASSWORD = "9090123";
@@ -209,27 +254,10 @@
         }
 
         // ==========================================
-        // UI & UTILITÁRIOS GERAIS
-        // ==========================================
-        function showModal(title, message) {
-            document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-message').textContent = message;
-            document.getElementById('custom-modal').classList.remove('hidden');
-        }
-
-        document.getElementById('btn-modal-close').addEventListener('click', () => {
-            document.getElementById('custom-modal').classList.add('hidden');
-        });
-
-        function scrollToBottom() {
-            const container = document.getElementById('messages-container');
-            container.scrollTop = container.scrollHeight;
-        }
-
-        // ==========================================
         // AUTENTICAÇÃO E INICIALIZAÇÃO
         // ==========================================
         async function initAuth() {
+            if (!isFirebaseInitialized) return;
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
@@ -238,15 +266,16 @@
                 }
             } catch (error) {
                 console.error("Erro na autenticação Firebase:", error);
-                showModal("Erro Crítico", "Não foi possível estabelecer conexão segura com o servidor.");
+                showModal("Erro de Conexão", "Falha na autenticação do banco de dados (Verifique as regras do Firestore/Auth).");
             }
         }
 
-        onAuthStateChanged(auth, (user) => {
-            state.user = user;
-        });
-
-        initAuth();
+        if (isFirebaseInitialized) {
+            onAuthStateChanged(auth, (user) => {
+                state.user = user;
+            });
+            initAuth();
+        }
 
         // ==========================================
         // LÓGICA DE LOGIN ESTREITO (Apenas Senha)
@@ -254,6 +283,11 @@
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            if (!isFirebaseInitialized) {
+                showModal("Ação Bloqueada", "O aplicativo não está configurado para acessar a rede.");
+                return;
+            }
+
             const btn = document.getElementById('join-btn');
             const errorP = document.getElementById('login-error');
             const passwordInput = document.getElementById('room-password').value;
@@ -267,7 +301,7 @@
             }
 
             if (!state.user) {
-                errorP.textContent = "Aguardando conexão de rede. Tente novamente.";
+                errorP.textContent = "Conexão rejeitada pelo servidor. Verifique a configuração do Firebase Auth.";
                 errorP.classList.remove('hidden');
                 return;
             }
@@ -311,7 +345,7 @@
         }
 
         async function startChatListener() {
-            if (!state.user) return;
+            if (!state.user || !isFirebaseInitialized) return;
 
             const q = query(getChatCollectionPath()); 
 
@@ -348,7 +382,12 @@
 
             }, (error) => {
                 console.error("Erro na escuta do Firestore:", error);
-                showModal("Desconexão", "A sincronização com a rede falhou.");
+                // Tratamento especial para erro de permissão (Missing or insufficient permissions)
+                if (error.code === 'permission-denied') {
+                    showModal("Acesso Negado (Firestore)", "O banco de dados bloqueou a leitura. Verifique as 'Security Rules' no painel do Firebase.");
+                } else {
+                    showModal("Desconexão", "A sincronização com a rede falhou.");
+                }
             });
         }
 
@@ -376,7 +415,7 @@
         }
 
         async function sendMessage(textContent) {
-            if (!state.user) return;
+            if (!state.user || !isFirebaseInitialized) return;
             
             const payloadStr = JSON.stringify({ content: textContent });
             const { ciphertext, iv } = await encryptData(payloadStr, state.cryptoKey);
@@ -391,7 +430,11 @@
                 });
             } catch (error) {
                 console.error("Erro ao enviar:", error);
-                showModal("Erro de Transmissão", "Falha ao enviar pacote criptografado.");
+                if (error.code === 'permission-denied') {
+                     showModal("Erro de Permissão", "Suas credenciais do Firebase não permitem gravação (Verifique as Security Rules).");
+                } else {
+                     showModal("Erro de Transmissão", "Falha ao enviar pacote criptografado.");
+                }
             }
         }
 
