@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WebRTC Reunião Multi-party (Modo PIN)</title>
+    <title>WebRTC Chamada 1-para-1</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Importação do PeerJS (Servidor de Sinalização Público) -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { background-color: #111827; color: #f3f4f6; font-family: sans-serif; }
-        .video-container { position: relative; width: 100%; padding-top: 133%; /* Aspect ratio 3:4 para celular */ background: #1f2937; border-radius: 0.5rem; overflow: hidden; border: 2px solid #374151; }
+        .video-container { position: relative; width: 100%; padding-top: 133%; background: #1f2937; border-radius: 0.5rem; overflow: hidden; border: 2px solid #374151; }
         .video-container video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+        /* Quando compartilhando tela, ajusta o fit para conter toda a tela e não cortar as bordas */
+        .video-container video.screen-share { object-fit: contain; background: #111; }
         .video-label { position: absolute; bottom: 0.5rem; left: 0.5rem; background: rgba(0,0,0,0.6); color: white; padding: 0.1rem 0.5rem; border-radius: 0.25rem; font-size: 0.7rem; font-weight: bold; z-index: 10; }
         .hidden { display: none !important; }
         input { text-transform: uppercase; }
@@ -19,61 +20,74 @@
 <body class="min-h-screen flex flex-col items-center p-4">
 
     <!-- Header -->
-    <header class="w-full max-w-5xl text-center mb-6">
-        <h1 class="text-2xl font-bold text-blue-400">Reunião P2P Multi-Party</h1>
-        <p class="text-xs text-gray-400 mt-1" id="status-text">Pronto. Escolha como deseja entrar.</p>
+    <header class="w-full max-w-4xl text-center mb-6">
+        <h1 class="text-2xl font-bold text-blue-400">Chamada Direta 1-para-1</h1>
+        <p class="text-xs text-gray-400 mt-1" id="status-text">Pronto. Inicie a chamada ou conecte-se.</p>
     </header>
 
     <!-- Seleção de Papel (Role) -->
     <main id="role-selection" class="w-full max-w-sm bg-gray-800 p-6 rounded-lg shadow-lg text-center flex flex-col gap-4">
         <button id="btn-role-host" class="bg-blue-600 hover:bg-blue-700 font-bold py-3 px-4 rounded transition-colors">
-            🎥 Criar Sala (Gerar PIN)
+            🎥 Criar Chamada (Gerar PIN)
         </button>
         <button id="btn-role-join" class="bg-green-600 hover:bg-green-700 font-bold py-3 px-4 rounded transition-colors">
-            👀 Entrar em Sala (Usar PIN)
+            👀 Entrar na Chamada (Usar PIN)
         </button>
     </main>
 
-    <!-- UI da Sala de Reunião (Compartilhada por Host e Clientes) -->
-    <section id="room-ui" class="w-full max-w-5xl hidden flex-col gap-4">
+    <!-- UI da Sala (1-para-1) -->
+    <section id="room-ui" class="w-full max-w-4xl hidden flex-col gap-4">
         
         <!-- Controles Superiores -->
         <div class="bg-gray-800 p-4 rounded-lg shadow flex flex-col md:flex-row justify-between items-center gap-4">
             
-            <!-- Bloco do PIN (Visível e interativo dependendo do papel) -->
+            <!-- Bloco do PIN -->
             <div id="pin-display-block" class="flex-1 w-full text-center md:text-left">
-                <span class="text-sm text-gray-400 block mb-1">PIN da Sala (Envie para até 9 pessoas):</span>
+                <span class="text-sm text-gray-400 block mb-1">Seu PIN (Envie para a outra pessoa):</span>
                 <div class="text-3xl font-mono font-bold tracking-widest text-yellow-400" id="pin-display">
                     ------
                 </div>
             </div>
 
+            <!-- Bloco Input de PIN -->
             <div id="pin-input-block" class="flex-1 w-full flex flex-col sm:flex-row gap-2 hidden">
                 <input type="text" id="viewer-pin-input" maxlength="6" class="flex-1 bg-gray-900 text-white text-xl font-mono text-center tracking-widest p-2 rounded border border-gray-600 focus:outline-none focus:border-green-500 placeholder-gray-700" placeholder="DIGITE O PIN">
                 <button id="btn-connect-room" class="bg-green-600 hover:bg-green-700 font-bold py-2 px-6 rounded transition-colors">Conectar</button>
             </div>
 
-            <!-- Controles de Câmera e Tela -->
+            <!-- Controles de Mídia -->
             <div class="flex flex-col gap-2 w-full md:w-auto mt-4 md:mt-0">
                 <select id="camera-select" class="bg-gray-700 text-white text-sm rounded p-2 border border-gray-600 w-full focus:outline-none focus:border-blue-500">
                     <option value="">Carregando câmeras...</option>
                 </select>
-                <button id="btn-toggle-wake" class="bg-yellow-600 hover:bg-yellow-700 text-sm py-2 px-3 rounded transition-colors flex items-center justify-center gap-2 w-full">
-                    <span id="wake-icon">🔓</span> Tela: Desprotegida
-                </button>
+                <div class="flex gap-2">
+                    <button id="btn-share-screen" class="flex-1 bg-purple-600 hover:bg-purple-700 text-xs font-bold py-2 px-2 rounded transition-colors flex items-center justify-center gap-1">
+                        🖥️ Compartilhar Tela
+                    </button>
+                    <button id="btn-toggle-wake" class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-xs py-2 px-2 rounded transition-colors flex items-center justify-center gap-1">
+                        <span id="wake-icon">🔓</span> Tela Fixa
+                    </button>
+                </div>
             </div>
         </div>
 
-        <p class="text-xs text-center text-red-400 font-bold" id="mesh-warning">Atenção: Redes P2P Mesh limitadas pela potência do celular. Máximo recomendado: 4 pessoas.</p>
+        <p class="text-xs text-center text-gray-500 font-bold">O compartilhamento de tela funciona nativamente apenas em Desktops/Notebooks.</p>
 
-        <!-- GRID DE VÍDEOS -->
-        <div id="video-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
-            <!-- Vídeo Local sempre existe -->
-            <div class="video-container border-blue-500 border-2 shadow-[0_0_10px_rgba(59,130,246,0.5)]" id="wrapper-local">
+        <!-- GRID DE VÍDEOS (Estrito para 2 slots) -->
+        <div id="video-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+            
+            <!-- Slot Local -->
+            <div class="video-container border-blue-500 border-2 shadow-[0_0_10px_rgba(59,130,246,0.5)]">
                 <video id="local-video" autoplay playsinline muted></video>
                 <div class="video-label">Você</div>
             </div>
-            <!-- Vídeos Remotos serão injetados aqui -->
+            
+            <!-- Slot Remoto -->
+            <div class="video-container border-green-500 border-2 shadow-[0_0_10px_rgba(34,197,94,0.3)] hidden" id="wrapper-remote">
+                <video id="remote-video" autoplay playsinline></video>
+                <div class="video-label" id="remote-label">Aguardando Conexão...</div>
+            </div>
+
         </div>
 
     </section>
@@ -84,15 +98,12 @@
         // ==========================================
         let peer = null;
         let localStream = null;
+        let screenStream = null;
+        let activeCall = null; // Apenas 1 chamada ativa permitida
         let wakeLock = null;
         
         let isHost = false;
-        let myRoomPin = null;
-        let hostPeerId = null;
-
-        // Estruturas para gerenciar o estado da sala Mesh
-        let dataConnections = {}; // Para o Host rastrear quem está na sala via canais de dados
-        let mediaCalls = {};      // Rastreia as chamadas de vídeo ativas (Para fechar quando alguém sair)
+        let isScreenSharing = false;
 
         // Elementos DOM
         const statusText = document.getElementById('status-text');
@@ -107,11 +118,14 @@
         const btnConnectRoom = document.getElementById('btn-connect-room');
         
         const cameraSelect = document.getElementById('camera-select');
+        const btnShareScreen = document.getElementById('btn-share-screen');
         const btnToggleWake = document.getElementById('btn-toggle-wake');
         const wakeIcon = document.getElementById('wake-icon');
         
         const localVideo = document.getElementById('local-video');
-        const videoGrid = document.getElementById('video-grid');
+        const remoteVideo = document.getElementById('remote-video');
+        const wrapperRemote = document.getElementById('wrapper-remote');
+        const remoteLabel = document.getElementById('remote-label');
 
         // ==========================================
         // Utilitários Puros
@@ -133,43 +147,24 @@
         }
 
         // ==========================================
-        // Gestão de UI Dinâmica de Vídeos (Mesh)
+        // Lógica de Renderização de Mídia (1-para-1)
         // ==========================================
-        function addRemoteVideo(peerId, stream) {
-            if (document.getElementById(`wrapper-${peerId}`)) return; // Já existe
-
-            const wrapper = document.createElement('div');
-            wrapper.className = 'video-container';
-            wrapper.id = `wrapper-${peerId}`;
-
-            const videoEl = document.createElement('video');
-            videoEl.autoplay = true;
-            videoEl.playsInline = true;
-            videoEl.srcObject = stream;
-
-            const label = document.createElement('div');
-            label.className = 'video-label';
-            // Simplifica a exibição do ID, mostrando apenas uma parte ou "Host"
-            label.innerText = peerId.includes('-host') ? 'Host da Sala' : `Parceiro ${peerId.substring(0,4)}`;
-
-            wrapper.appendChild(videoEl);
-            wrapper.appendChild(label);
-            videoGrid.appendChild(wrapper);
+        function setupRemoteStream(stream) {
+            remoteVideo.srcObject = stream;
+            wrapperRemote.classList.remove('hidden');
+            remoteLabel.innerText = "Parceiro Conectado";
+            updateStatus("Conexão estabelecida com sucesso!", 'success');
         }
 
-        function removeRemoteVideo(peerId) {
-            const wrapper = document.getElementById(`wrapper-${peerId}`);
-            if (wrapper) {
-                wrapper.remove();
-            }
-            if (mediaCalls[peerId]) {
-                mediaCalls[peerId].close();
-                delete mediaCalls[peerId];
-            }
+        function clearRemoteStream() {
+            remoteVideo.srcObject = null;
+            wrapperRemote.classList.add('hidden');
+            remoteLabel.innerText = "Aguardando...";
+            updateStatus("O parceiro desconectou da chamada.", 'error');
         }
 
         // ==========================================
-        // Lógica: Câmera e Dispositivos
+        // Captura de Câmera
         // ==========================================
         async function getCameras() {
             try {
@@ -190,32 +185,31 @@
 
         async function openCamera(deviceId = null) {
             const constraints = {
-                video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: "user" }, // user/frontal preferencial para reuniões
+                video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: "user" },
                 audio: true 
             };
 
             try {
+                // Se estava compartilhando tela, força o encerramento do stream da tela
+                if (isScreenSharing) {
+                    stopScreenShare();
+                }
+
                 if (localStream) {
                     localStream.getTracks().forEach(track => track.stop());
                 }
                 
                 localStream = await navigator.mediaDevices.getUserMedia(constraints);
-                localVideo.srcObject = localStream;
                 
-                // Trata a troca de câmera a quente para TODAS as chamadas ativas da Malha
-                if (peer && peer.connections) {
+                localVideo.srcObject = localStream;
+                localVideo.classList.remove('screen-share');
+                
+                // Troca track a quente se a chamada já estiver em andamento
+                if (activeCall && activeCall.peerConnection) {
                     const videoTrack = localStream.getVideoTracks()[0];
-                    for (let pId in peer.connections) {
-                        const connections = peer.connections[pId];
-                        connections.forEach(conn => {
-                            // Pegamos apenas as conexões de mídia, ignorando as de dados
-                            if(conn.type === 'media' && conn.peerConnection) {
-                                const sender = conn.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-                                if (sender && videoTrack) {
-                                    sender.replaceTrack(videoTrack);
-                                }
-                            }
-                        });
+                    const sender = activeCall.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+                    if (sender && videoTrack) {
+                        sender.replaceTrack(videoTrack);
                     }
                 }
                 return true;
@@ -230,7 +224,78 @@
             const deviceId = e.target.value;
             updateStatus("Trocando câmera...");
             await openCamera(deviceId);
-            updateStatus("Câmera atualizada para todos.", 'success');
+        });
+
+        // ==========================================
+        // Captura de Tela (Screen Share)
+        // ==========================================
+        async function startScreenShare() {
+            try {
+                if (!navigator.mediaDevices.getDisplayMedia) {
+                    throw new Error("API getDisplayMedia não suportada neste dispositivo/navegador.");
+                }
+
+                screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+                
+                const screenTrack = screenStream.getVideoTracks()[0];
+                
+                // Evento disparado quando o usuário clica em "Parar Compartilhamento" nativo do navegador
+                screenTrack.onended = () => {
+                    stopScreenShare();
+                };
+
+                // Troca a fonte do vídeo local
+                localVideo.srcObject = screenStream;
+                localVideo.classList.add('screen-share');
+                
+                // Substitui a track de vídeo na conexão WebRTC ativa (envia a tela)
+                if (activeCall && activeCall.peerConnection) {
+                    const sender = activeCall.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+                    if (sender && screenTrack) {
+                        sender.replaceTrack(screenTrack);
+                    }
+                }
+
+                isScreenSharing = true;
+                btnShareScreen.classList.replace('bg-purple-600', 'bg-red-600');
+                btnShareScreen.classList.replace('hover:bg-purple-700', 'hover:bg-red-700');
+                btnShareScreen.innerHTML = "❌ Parar Tela";
+                updateStatus("Compartilhando a tela.", 'success');
+
+            } catch (error) {
+                console.error("Erro no Screen Share:", error);
+                alert(`Erro ao capturar tela: ${error.message}`);
+                stopScreenShare();
+            }
+        }
+
+        async function stopScreenShare() {
+            if (!isScreenSharing) return;
+            
+            if (screenStream) {
+                screenStream.getTracks().forEach(track => track.stop());
+                screenStream = null;
+            }
+
+            isScreenSharing = false;
+            btnShareScreen.classList.replace('bg-red-600', 'bg-purple-600');
+            btnShareScreen.classList.replace('hover:bg-red-700', 'hover:bg-purple-700');
+            btnShareScreen.innerHTML = "🖥️ Compartilhar Tela";
+            
+            updateStatus("Retornando para a câmera...");
+            
+            // Reabre a câmera baseado no seletor atual
+            const deviceId = cameraSelect.value || null;
+            await openCamera(deviceId);
+            updateStatus("Câmera restaurada.");
+        }
+
+        btnShareScreen.addEventListener('click', () => {
+            if (isScreenSharing) {
+                stopScreenShare();
+            } else {
+                startScreenShare();
+            }
         });
 
         // ==========================================
@@ -259,123 +324,73 @@
         btnToggleWake.addEventListener('click', toggleWakeLock);
 
         // ==========================================
-        // NÚCLEO MULTIPONTO: Inicialização Mútua (Host e Cliente)
+        // Configuração Comum da Chamada P2P
         // ==========================================
-        
-        // Função responsável por fazer a chamada de mídia efetiva para um peer
-        function initiateMediaCall(targetPeerId) {
-            if (!localStream || targetPeerId === peer.id || mediaCalls[targetPeerId]) return;
-            
-            updateStatus(`Iniciando chamada com ${targetPeerId.substring(0,4)}...`);
-            const call = peer.call(targetPeerId, localStream);
-            
+        function setupCallListeners(call) {
+            activeCall = call;
+
             call.on('stream', (remoteStream) => {
-                addRemoteVideo(targetPeerId, remoteStream);
-                updateStatus("Malha conectada com sucesso.", 'success');
+                setupRemoteStream(remoteStream);
             });
 
             call.on('close', () => {
-                removeRemoteVideo(targetPeerId);
+                clearRemoteStream();
+                activeCall = null;
             });
             
             call.on('error', (err) => {
                 console.error("Erro na chamada:", err);
-            });
-
-            mediaCalls[targetPeerId] = call;
-        }
-
-        // Configuração de ouvintes base que TODOS (Host e Clientes) precisam ter
-        function setupCommonPeerListeners() {
-            // Escuta por chamadas de vídeo chegando (Qualquer um da malha pode te ligar)
-            peer.on('call', (incomingCall) => {
-                // Atende enviando o próprio stream
-                incomingCall.answer(localStream);
-                
-                incomingCall.on('stream', (remoteStream) => {
-                    addRemoteVideo(incomingCall.peer, remoteStream);
-                });
-
-                incomingCall.on('close', () => {
-                    removeRemoteVideo(incomingCall.peer);
-                });
-
-                // Registra a chamada para poder limpá-la se o usuário trocar de câmera
-                mediaCalls[incomingCall.peer] = incomingCall;
-            });
-
-            peer.on('error', (err) => {
-                console.error("PeerJS Erro:", err);
-                updateStatus(`Erro P2P: ${err.type}`, 'error');
+                clearRemoteStream();
+                activeCall = null;
             });
         }
 
         // ==========================================
-        // Fluxo do Host (Orquestrador da Malha)
+        // Fluxo 1 (Host - Quem gera o PIN e aguarda a ligação)
         // ==========================================
         document.getElementById('btn-role-host').addEventListener('click', async () => {
             isHost = true;
             roleSelection.classList.add('hidden');
             roomUi.classList.remove('hidden');
             roomUi.classList.add('flex');
-            updateStatus("Preparando sala (Host)...");
+            
+            // Oculta área remota até que alguém ligue
+            wrapperRemote.classList.remove('hidden');
+            remoteLabel.innerText = "Aguardando alguém entrar...";
 
             const cameraOpened = await openCamera();
             if (!cameraOpened) return;
             await getCameras();
 
-            myRoomPin = generatePIN();
-            pinDisplay.innerText = myRoomPin;
-            hostPeerId = `p2p-mesh-${myRoomPin}-host`;
+            const pin = generatePIN();
+            pinDisplay.innerText = pin;
+            const peerId = `p2p-1to1-${pin}`; 
 
-            peer = new Peer(hostPeerId, { debug: 2 });
+            updateStatus("Conectando servidor de sinalização...");
+            peer = new Peer(peerId, { debug: 2 });
 
             peer.on('open', (id) => {
-                updateStatus("Sala Aberta! Compartilhe o PIN com o grupo.", 'success');
+                updateStatus("Pronto! Envie o PIN e aguarde a conexão.", 'success');
             });
 
-            setupCommonPeerListeners();
+            // O Host apenas ESCUTA. Quando o cliente digitar o PIN, a ligação chegará aqui.
+            peer.on('call', (call) => {
+                // Atende passando o stream local (Câmera ou Tela)
+                const streamToSend = isScreenSharing ? screenStream : localStream;
+                call.answer(streamToSend);
+                setupCallListeners(call);
+            });
 
-            // Lógica Exclusiva do Host: Orquestrar as conexões Data
-            peer.on('connection', (dataConn) => {
-                dataConn.on('open', () => {
-                    // Quando um novo cliente entra, o Host envia para ele a lista de quem JÁ ESTÁ na sala
-                    const existingPeerIds = Object.keys(dataConnections);
-                    
-                    dataConn.send({
-                        type: 'room_state',
-                        peers: existingPeerIds // Lista não inclui o Host, o Cliente já sabe quem é o Host
-                    });
-
-                    // Avisa todos os membros antigos que tem gente nova (Opcional na malha se o cliente iniciar, mas bom para estado)
-                    Object.values(dataConnections).forEach(conn => {
-                        conn.send({ type: 'peer_joined', peer: dataConn.peer });
-                    });
-
-                    // Registra a nova conexão de dados
-                    dataConnections[dataConn.peer] = dataConn;
-
-                    // O Host inicia a chamada de vídeo com o novo integrante imediatamente
-                    initiateMediaCall(dataConn.peer);
-
-                    dataConn.on('close', () => {
-                        // Limpa registros do Host
-                        delete dataConnections[dataConn.peer];
-                        removeRemoteVideo(dataConn.peer);
-                        
-                        // Avisa os sobreviventes que alguém caiu
-                        Object.values(dataConnections).forEach(conn => {
-                            conn.send({ type: 'peer_left', peer: dataConn.peer });
-                        });
-                    });
-                });
+            peer.on('error', (err) => {
+                console.error("PeerJS Erro:", err);
+                updateStatus(`Erro P2P: ${err.type}`, 'error');
             });
 
             if (wakeLock === null) toggleWakeLock();
         });
 
         // ==========================================
-        // Fluxo do Cliente (Participante da Malha)
+        // Fluxo 2 (Viewer - Quem digita o PIN e faz a ligação)
         // ==========================================
         document.getElementById('btn-role-join').addEventListener('click', async () => {
             isHost = false;
@@ -386,20 +401,32 @@
             pinDisplayBlock.classList.add('hidden');
             pinInputBlock.classList.remove('hidden');
             
-            updateStatus("Preparando sua câmera...");
+            // Exibe slot remoto vazio aguardando ação
+            wrapperRemote.classList.remove('hidden');
 
             const cameraOpened = await openCamera();
             if (!cameraOpened) return;
             await getCameras();
 
-            // Inicia peer do cliente com ID aleatório
             peer = new Peer({ debug: 2 });
             
             peer.on('open', (id) => {
-                updateStatus("Cliente pronto. Digite o PIN da sala para entrar.");
+                updateStatus("Pronto. Digite o PIN para ligar para o host.");
             });
 
-            setupCommonPeerListeners();
+            // O Viewer também deve escutar por ligações, caso o Host derrube e recrie a chamada (Raramente usado em 1-to-1 estrito, mas por segurança)
+            peer.on('call', (call) => {
+                const streamToSend = isScreenSharing ? screenStream : localStream;
+                call.answer(streamToSend);
+                setupCallListeners(call);
+            });
+
+            peer.on('error', (err) => {
+                console.error("PeerJS Erro:", err);
+                updateStatus(`Erro de Conexão: O PIN está correto e o parceiro online?`, 'error');
+                btnConnectRoom.disabled = false;
+                btnConnectRoom.innerText = 'Conectar';
+            });
         });
 
         btnConnectRoom.addEventListener('click', () => {
@@ -410,53 +437,16 @@
             }
 
             btnConnectRoom.disabled = true;
-            btnConnectRoom.innerText = 'Conectando...';
-            updateStatus("Buscando a Sala do Host...");
+            btnConnectRoom.innerText = 'Chamando...';
+            updateStatus("Ligando para o destinatário...");
 
-            hostPeerId = `p2p-mesh-${rawPin}-host`;
+            const targetPeerId = `p2p-1to1-${rawPin}`;
 
-            // O Cliente abre o canal de dados exclusivo com o Host
-            const hostDataConn = peer.connect(hostPeerId);
-
-            hostDataConn.on('open', () => {
-                updateStatus("Acesso concedido. Sincronizando com os outros participantes...", 'success');
-                
-                // O Cliente liga para o Host
-                initiateMediaCall(hostPeerId);
-            });
-
-            // Ouve as ordens de roteamento vindas do Host
-            hostDataConn.on('data', (data) => {
-                if (data.type === 'room_state') {
-                    // O Host enviou a lista de todos que já estavam na sala
-                    const existingPeers = data.peers;
-                    existingPeers.forEach(targetPeerId => {
-                        // Inicia chamada de vídeo com cada um dos membros antigos
-                        initiateMediaCall(targetPeerId);
-                    });
-                } 
-                else if (data.type === 'peer_joined') {
-                    // O Host avisou que um membro NOVO entrou
-                    // Como a regra de Mesh determina, deixamos o novo membro iniciar a ligação para nós,
-                    // logo, não precisamos fazer peer.call aqui, apenas esperar o evento peer.on('call').
-                    updateStatus(`Novo integrante chegando...`);
-                }
-                else if (data.type === 'peer_left') {
-                    // O Host avisou que alguém caiu, removemos o vídeo da tela
-                    removeRemoteVideo(data.peer);
-                }
-            });
-
-            hostDataConn.on('close', () => {
-                updateStatus("O Host encerrou a sala.", 'error');
-                // Se o host cair, a malha de sinalização quebra. O ideal é notificar.
-            });
-
-            hostDataConn.on('error', (err) => {
-                updateStatus("Falha ao conectar no Host. PIN incorreto?", 'error');
-                btnConnectRoom.disabled = false;
-                btnConnectRoom.innerText = 'Conectar';
-            });
+            // Viewer INICIA a chamada com o Host passando sua própria mídia
+            const streamToSend = isScreenSharing ? screenStream : localStream;
+            const call = peer.call(targetPeerId, streamToSend);
+            
+            setupCallListeners(call);
         });
 
         viewerPinInput.addEventListener('input', (e) => {
