@@ -3,39 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WebRTC Manual P2P Monitor</title>
+    <title>WebRTC Monitor (PIN Mode)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Importação do PeerJS (Servidor de Sinalização Público) -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { background-color: #111827; color: #f3f4f6; font-family: sans-serif; }
         video { width: 100%; max-height: 50vh; background: #000; border-radius: 0.5rem; object-fit: cover; }
         .hidden { display: none !important; }
-        textarea { resize: none; font-family: monospace; font-size: 0.75rem; }
+        input { text-transform: uppercase; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center p-4">
 
     <!-- Header -->
     <header class="w-full max-w-2xl text-center mb-6">
-        <h1 class="text-2xl font-bold text-blue-400">Monitor P2P - Modo Manual (Sem DB)</h1>
+        <h1 class="text-2xl font-bold text-blue-400">Monitor P2P - Modo PIN</h1>
         <p class="text-xs text-gray-400 mt-1" id="status-text">Pronto. Escolha a função.</p>
     </header>
 
     <!-- Seleção de Papel (Role) -->
     <main id="role-selection" class="w-full max-w-sm bg-gray-800 p-6 rounded-lg shadow-lg text-center flex flex-col gap-4">
         <button id="btn-role-broadcaster" class="bg-blue-600 hover:bg-blue-700 font-bold py-3 px-4 rounded transition-colors">
-            🎥 Iniciar Servidor (Câmera)
+            🎥 Iniciar Servidor (Transmitir Câmera)
         </button>
         <button id="btn-role-viewer" class="bg-green-600 hover:bg-green-700 font-bold py-3 px-4 rounded transition-colors">
-            👀 Iniciar Cliente (Visualizador)
+            👀 Iniciar Cliente (Assistir)
         </button>
     </main>
 
-    <!-- Interface do Transmissor -->
+    <!-- Interface do Transmissor (Servidor) -->
     <section id="broadcaster-ui" class="w-full max-w-2xl hidden flex-col gap-4">
         <div class="bg-gray-800 p-4 rounded-lg shadow flex flex-col gap-4">
             
             <div class="flex flex-col sm:flex-row justify-between gap-4">
-                <select id="camera-select" class="bg-gray-700 text-white text-sm rounded p-2 border border-gray-600 w-full sm:w-1/2">
+                <select id="camera-select" class="bg-gray-700 text-white text-sm rounded p-2 border border-gray-600 w-full sm:w-1/2 focus:outline-none focus:border-blue-500">
                     <option value="">Carregando câmeras...</option>
                 </select>
                 <button id="btn-toggle-wake" class="bg-yellow-600 hover:bg-yellow-700 text-sm py-2 px-3 rounded transition-colors flex items-center justify-center gap-2 sm:w-1/2">
@@ -43,36 +45,30 @@
                 </button>
             </div>
 
-            <div class="border-t border-gray-700 pt-4">
-                <label class="text-sm text-yellow-400 font-bold block mb-1">1. Seu Token (Copie e envie ao Cliente):</label>
-                <textarea id="broadcaster-offer-text" class="w-full bg-gray-900 text-gray-300 p-2 rounded h-20 outline-none" readonly placeholder="Aguardando geração da oferta..."></textarea>
-                <button id="btn-copy-offer" class="mt-2 bg-gray-600 hover:bg-gray-500 text-xs py-1 px-3 rounded w-full">Copiar Meu Token</button>
-            </div>
-
-            <div class="border-t border-gray-700 pt-4">
-                <label class="text-sm text-green-400 font-bold block mb-1">4. Cole aqui o Token Resposta do Cliente:</label>
-                <textarea id="broadcaster-answer-input" class="w-full bg-gray-700 text-white p-2 rounded h-20 outline-none focus:border-blue-500 border border-gray-600" placeholder="Cole o token recebido do cliente aqui..."></textarea>
-                <button id="btn-connect-broadcaster" class="mt-2 bg-blue-600 hover:bg-blue-700 font-bold py-2 px-4 rounded w-full">Conectar P2P</button>
+            <div class="border-t border-gray-700 pt-4 text-center">
+                <span class="text-sm text-gray-400 block mb-2">Informe este PIN ao Cliente:</span>
+                <div class="text-4xl font-mono font-bold tracking-widest text-yellow-400 bg-gray-900 py-3 rounded-lg border border-gray-700" id="pin-display">
+                    ------
+                </div>
             </div>
         </div>
         
         <video id="local-video" autoplay playsinline muted></video>
+        <p class="text-xs text-center text-gray-500 mt-2">Atenção: Mantenha a tela ligada. Abaixe o brilho manualmente se necessário.</p>
     </section>
 
-    <!-- Interface do Visualizador -->
+    <!-- Interface do Visualizador (Cliente) -->
     <section id="viewer-ui" class="w-full max-w-2xl hidden flex-col gap-4">
         <div class="bg-gray-800 p-4 rounded-lg shadow flex flex-col gap-4">
             
             <div>
-                <label class="text-sm text-yellow-400 font-bold block mb-1">2. Cole o Token do Servidor aqui:</label>
-                <textarea id="viewer-offer-input" class="w-full bg-gray-700 text-white p-2 rounded h-20 outline-none focus:border-green-500 border border-gray-600" placeholder="Cole o token do Servidor/Câmera aqui..."></textarea>
-                <button id="btn-generate-answer" class="mt-2 bg-green-600 hover:bg-green-700 font-bold py-2 px-4 rounded w-full">Gerar Minha Resposta</button>
-            </div>
-
-            <div class="border-t border-gray-700 pt-4 hidden" id="viewer-answer-section">
-                <label class="text-sm text-green-400 font-bold block mb-1">3. Seu Token Resposta (Envie de volta ao Servidor):</label>
-                <textarea id="viewer-answer-text" class="w-full bg-gray-900 text-gray-300 p-2 rounded h-20 outline-none" readonly></textarea>
-                <button id="btn-copy-answer" class="mt-2 bg-gray-600 hover:bg-gray-500 text-xs py-1 px-3 rounded w-full">Copiar Minha Resposta</button>
+                <label class="text-sm text-gray-400 block mb-2 text-center">Digite o PIN do Servidor:</label>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="text" id="viewer-pin-input" maxlength="6" class="flex-1 bg-gray-900 text-white text-3xl font-mono text-center tracking-widest p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500 placeholder-gray-700" placeholder="000000">
+                    <button id="btn-connect-viewer" class="bg-green-600 hover:bg-green-700 font-bold py-3 px-6 rounded-lg transition-colors w-full sm:w-auto">
+                        Conectar
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -80,18 +76,14 @@
     </section>
 
     <script>
-        // Servidores STUN públicos (Obrigatórios para descobrir IPs através do NAT)
-        const configuration = {
-            iceServers: [
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' }
-            ]
-        };
-
-        let peerConnection = null;
+        // ==========================================
+        // Estado Global e Variáveis
+        // ==========================================
+        let peer = null;
         let localStream = null;
         let remoteStream = null;
         let wakeLock = null;
+        let myPin = null;
 
         // Elementos DOM
         const statusText = document.getElementById('status-text');
@@ -103,42 +95,25 @@
         const cameraSelect = document.getElementById('camera-select');
         const btnToggleWake = document.getElementById('btn-toggle-wake');
         const wakeIcon = document.getElementById('wake-icon');
-        const broadcasterOfferText = document.getElementById('broadcaster-offer-text');
-        const btnCopyOffer = document.getElementById('btn-copy-offer');
-        const broadcasterAnswerInput = document.getElementById('broadcaster-answer-input');
-        const btnConnectBroadcaster = document.getElementById('btn-connect-broadcaster');
+        const pinDisplay = document.getElementById('pin-display');
         
         // UI Visualizador
         const viewerUi = document.getElementById('viewer-ui');
         const remoteVideo = document.getElementById('remote-video');
-        const viewerOfferInput = document.getElementById('viewer-offer-input');
-        const btnGenerateAnswer = document.getElementById('btn-generate-answer');
-        const viewerAnswerSection = document.getElementById('viewer-answer-section');
-        const viewerAnswerText = document.getElementById('viewer-answer-text');
-        const btnCopyAnswer = document.getElementById('btn-copy-answer');
+        const viewerPinInput = document.getElementById('viewer-pin-input');
+        const btnConnectViewer = document.getElementById('btn-connect-viewer');
 
         // ==========================================
-        // Utilitários de Tokenização (SDP para Base64)
+        // Utilitários
         // ==========================================
-        function encodeToken(obj) {
-            return btoa(JSON.stringify(obj));
-        }
-
-        function decodeToken(token) {
-            try {
-                return JSON.parse(atob(token));
-            } catch (e) {
-                alert("Token inválido ou corrompido.");
-                return null;
+        function generatePIN() {
+            // Gera um PIN alfanumérico de 6 dígitos
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removido I, O, 0, 1 para evitar confusão visual
+            let result = '';
+            for (let i = 0; i < 6; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
             }
-        }
-
-        function copyToClipboard(elementId) {
-            const copyText = document.getElementById(elementId);
-            copyText.select();
-            copyText.setSelectionRange(0, 99999);
-            document.execCommand('copy');
-            alert("Token copiado para a área de transferência!");
+            return result;
         }
 
         // ==========================================
@@ -175,16 +150,26 @@
                 localStream = await navigator.mediaDevices.getUserMedia(constraints);
                 localVideo.srcObject = localStream;
                 
-                if (peerConnection) {
+                // Trata a troca de câmera a quente se já houver chamadas P2P ativas
+                if (peer && peer.connections) {
                     const videoTrack = localStream.getVideoTracks()[0];
-                    const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-                    if (sender && videoTrack) {
-                        sender.replaceTrack(videoTrack);
+                    // Itera sobre todas as conexões PeerJS ativas e substitui a track
+                    for (let peerId in peer.connections) {
+                        const connections = peer.connections[peerId];
+                        connections.forEach(conn => {
+                            if(conn.peerConnection) {
+                                const sender = conn.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+                                if (sender && videoTrack) {
+                                    sender.replaceTrack(videoTrack);
+                                }
+                            }
+                        });
                     }
                 }
                 return true;
             } catch (error) {
                 statusText.innerHTML = "<span class='text-red-500 font-bold'>Erro: Permissão de câmera negada.</span>";
+                console.error(error);
                 return false;
             }
         }
@@ -193,6 +178,7 @@
             const deviceId = e.target.value;
             statusText.innerText = "Trocando câmera...";
             await openCamera(deviceId);
+            statusText.innerText = "Câmera trocada. Transmitindo P2P.";
         });
 
         // ==========================================
@@ -200,7 +186,7 @@
         // ==========================================
         async function toggleWakeLock() {
             if (!('wakeLock' in navigator)) {
-                alert("Wake Lock API não suportada.");
+                alert("Wake Lock API não suportada no seu navegador.");
                 return;
             }
             try {
@@ -227,62 +213,49 @@
             roleSelection.classList.add('hidden');
             broadcasterUi.classList.remove('hidden');
             broadcasterUi.classList.add('flex');
-            statusText.innerText = "Preparando servidor local...";
+            statusText.innerText = "Preparando servidor local e câmera...";
 
             const cameraOpened = await openCamera();
             if (!cameraOpened) return;
             await getCameras();
 
-            peerConnection = new RTCPeerConnection(configuration);
+            // Gera PIN e inicia PeerJS com este ID específico
+            myPin = generatePIN();
+            pinDisplay.innerText = myPin;
+            statusText.innerText = "Conectando ao servidor de sinalização (PeerJS Cloud)...";
 
-            localStream.getTracks().forEach(track => {
-                peerConnection.addTrack(track, localStream);
+            // Prefixo aplicado para evitar colisões no servidor público do PeerJS
+            const peerId = `p2p-cam-${myPin}`; 
+            
+            peer = new Peer(peerId, {
+                debug: 2 // Log moderado no console
             });
 
-            // Gerar Oferta
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
+            peer.on('open', (id) => {
+                statusText.innerText = "Servidor P2P Online. Aguardando conexão do cliente...";
+            });
 
-            // IMPORTANTE: Em sinalização manual, devemos esperar a coleta de TODOS os ICE candidates (STUN)
-            // antes de entregar o token para o usuário copiar.
-            peerConnection.onicegatheringstatechange = () => {
-                if (peerConnection.iceGatheringState === 'complete') {
-                    const fullOffer = peerConnection.localDescription;
-                    broadcasterOfferText.value = encodeToken(fullOffer);
-                    statusText.innerText = "Token gerado. Copie e envie para o cliente.";
-                }
-            };
-            
-            // Tratamento de segurança caso o state 'complete' não dispare rapidamente em algumas redes
-            setTimeout(() => {
-                if (broadcasterOfferText.value === "" && peerConnection.iceGatheringState !== 'new') {
-                     broadcasterOfferText.value = encodeToken(peerConnection.localDescription);
-                }
-            }, 3000);
+            // 1. Cliente se conecta primariamente via canal de DADOS para anunciar que chegou
+            peer.on('connection', (conn) => {
+                conn.on('open', () => {
+                    statusText.innerText = `Cliente detectado! Estabelecendo fluxo de mídia...`;
+                    
+                    // 2. Servidor dispara a chamada de mídia de volta para o ID do cliente
+                    const call = peer.call(conn.peer, localStream);
+                    
+                    call.on('error', (err) => {
+                        console.error("Erro na chamada:", err);
+                        statusText.innerHTML = "<span class='text-red-500'>Erro na transmissão do vídeo.</span>";
+                    });
+                });
+            });
+
+            peer.on('error', (err) => {
+                console.error("PeerJS Erro:", err);
+                statusText.innerHTML = `<span class='text-red-500 font-bold'>Erro P2P: ${err.type}</span>`;
+            });
 
             toggleWakeLock();
-        });
-
-        btnCopyOffer.addEventListener('click', () => copyToClipboard('broadcaster-offer-text'));
-
-        btnConnectBroadcaster.addEventListener('click', async () => {
-            const answerToken = broadcasterAnswerInput.value.trim();
-            if (!answerToken) {
-                alert("Cole o token do cliente primeiro.");
-                return;
-            }
-
-            const answerDesc = decodeToken(answerToken);
-            if (!answerDesc) return;
-
-            try {
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(answerDesc));
-                statusText.innerText = "Conexão P2P Estabelecida!";
-                broadcasterAnswerInput.value = "";
-            } catch (e) {
-                statusText.innerHTML = "<span class='text-red-500 font-bold'>Erro ao processar resposta do cliente.</span>";
-                console.error(e);
-            }
         });
 
         // ==========================================
@@ -292,80 +265,63 @@
             roleSelection.classList.add('hidden');
             viewerUi.classList.remove('hidden');
             viewerUi.classList.add('flex');
-            statusText.innerText = "Aguardando token do Servidor...";
+            statusText.innerText = "Aguardando PIN do Transmissor...";
+            
+            // Inicia cliente com ID aleatório gerado pelo PeerJS
+            peer = new Peer({ debug: 2 });
+            
+            peer.on('open', (id) => {
+                statusText.innerText = "Cliente P2P pronto. Digite o PIN.";
+            });
+
+            // Escuta ativamente por chamadas de mídia vindas do Transmissor
+            peer.on('call', (call) => {
+                statusText.innerText = "Recebendo transmissão...";
+                
+                // O cliente atende a chamada sem enviar stream próprio (apenas recebe)
+                call.answer(); 
+                
+                call.on('stream', (incomingStream) => {
+                    remoteStream = incomingStream;
+                    remoteVideo.srcObject = remoteStream;
+                    statusText.innerText = "Transmissão P2P Estabelecida!";
+                    statusText.classList.add('text-green-400');
+                });
+            });
+
+            peer.on('error', (err) => {
+                console.error("PeerJS Erro:", err);
+                statusText.innerHTML = `<span class='text-red-500 font-bold'>Erro P2P: ${err.type}</span>`;
+            });
         });
 
-        btnGenerateAnswer.addEventListener('click', async () => {
-            const offerToken = viewerOfferInput.value.trim();
-            if (!offerToken) {
-                alert("Cole o token do servidor primeiro.");
+        btnConnectViewer.addEventListener('click', () => {
+            const rawPin = viewerPinInput.value.trim().toUpperCase();
+            if (rawPin.length !== 6) {
+                alert("O PIN deve conter exatamente 6 caracteres.");
                 return;
             }
 
-            const offerDesc = decodeToken(offerToken);
-            if (!offerDesc) return;
+            statusText.innerText = "Buscando servidor através do PIN...";
+            const targetPeerId = `p2p-cam-${rawPin}`;
 
-            peerConnection = new RTCPeerConnection(configuration);
-            remoteStream = new MediaStream();
-            remoteVideo.srcObject = remoteStream;
+            // 1. Cliente tenta abrir canal de dados com o Servidor baseado no PIN
+            const conn = peer.connect(targetPeerId);
 
-            peerConnection.addEventListener('track', event => {
-                event.streams[0].getTracks().forEach(track => {
-                    remoteStream.addTrack(track);
-                });
-                statusText.innerText = "Recebendo stream direta.";
+            conn.on('open', () => {
+                statusText.innerText = "Conectado ao transmissor. Solicitando vídeo...";
+                // O Servidor receberá este evento e disparará o peer.call (ver bloco do servidor acima)
             });
 
-            try {
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(offerDesc));
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-
-                viewerAnswerSection.classList.remove('hidden');
-                statusText.innerText = "Coletando rotas de rede...";
-
-                // Aguarda coleta ICE para gerar token completo
-                peerConnection.onicegatheringstatechange = () => {
-                    if (peerConnection.iceGatheringState === 'complete') {
-                        const fullAnswer = peerConnection.localDescription;
-                        viewerAnswerText.value = encodeToken(fullAnswer);
-                        statusText.innerText = "Token de Resposta gerado. Envie de volta ao servidor.";
-                    }
-                };
-
-                setTimeout(() => {
-                    if (viewerAnswerText.value === "" && peerConnection.iceGatheringState !== 'new') {
-                         viewerAnswerText.value = encodeToken(peerConnection.localDescription);
-                    }
-                }, 3000);
-
-            } catch (e) {
-                statusText.innerHTML = "<span class='text-red-500 font-bold'>Erro ao gerar resposta. Token do servidor pode ser inválido.</span>";
-                console.error(e);
-            }
+            conn.on('error', (err) => {
+                statusText.innerHTML = "<span class='text-red-500 font-bold'>Falha ao conectar. Verifique o PIN.</span>";
+            });
         });
 
-        btnCopyAnswer.addEventListener('click', () => copyToClipboard('viewer-answer-text'));
-
-        // ==========================================
-        // Monitoramento de Conexão
-        // ==========================================
-        function setupConnectionMonitoring() {
-            if(!peerConnection) return;
-            peerConnection.onconnectionstatechange = () => {
-                if (peerConnection.connectionState === 'connected') {
-                    statusText.innerText = "Conexão P2P Estabelecida! (Direto)";
-                    statusText.classList.add('text-green-400');
-                } else if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
-                    statusText.innerText = "Conexão perdida. É necessário reiniciar o processo manual.";
-                    statusText.classList.add('text-red-500');
-                }
-            };
-        }
-        
-        // Adiciona listener de monitoramento no click dos papéis
-        document.getElementById('btn-role-broadcaster').addEventListener('click', () => { setTimeout(setupConnectionMonitoring, 1000) });
-        btnGenerateAnswer.addEventListener('click', () => { setTimeout(setupConnectionMonitoring, 1000) });
+        // Formatação visual do Input do PIN
+        viewerPinInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^A-Z0-9]/ig, '').toUpperCase();
+        });
 
     </script>
 </body>
