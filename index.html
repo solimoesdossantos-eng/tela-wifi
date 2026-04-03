@@ -3,71 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WebRTC Camera Monitor</title>
+    <title>WebRTC Manual P2P Monitor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #111827; color: #f3f4f6; font-family: sans-serif; }
-        video { width: 100%; max-height: 70vh; background: #000; border-radius: 0.5rem; object-fit: cover; }
+        video { width: 100%; max-height: 50vh; background: #000; border-radius: 0.5rem; object-fit: cover; }
         .hidden { display: none !important; }
+        textarea { resize: none; font-family: monospace; font-size: 0.75rem; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center p-4">
 
     <!-- Header -->
     <header class="w-full max-w-2xl text-center mb-6">
-        <h1 class="text-2xl font-bold text-blue-400">Monitor de Câmera P2P</h1>
-        <p class="text-xs text-gray-400 mt-1" id="status-text">Inicializando sistema...</p>
+        <h1 class="text-2xl font-bold text-blue-400">Monitor P2P - Modo Manual (Sem DB)</h1>
+        <p class="text-xs text-gray-400 mt-1" id="status-text">Pronto. Escolha a função.</p>
     </header>
 
     <!-- Seleção de Papel (Role) -->
     <main id="role-selection" class="w-full max-w-sm bg-gray-800 p-6 rounded-lg shadow-lg text-center flex flex-col gap-4">
-        <h2 class="text-lg font-semibold mb-2">Escolha a função deste dispositivo:</h2>
         <button id="btn-role-broadcaster" class="bg-blue-600 hover:bg-blue-700 font-bold py-3 px-4 rounded transition-colors">
-            🎥 Transmitir Câmera (Servidor)
+            🎥 Iniciar Servidor (Câmera)
         </button>
         <button id="btn-role-viewer" class="bg-green-600 hover:bg-green-700 font-bold py-3 px-4 rounded transition-colors">
-            👀 Assistir Transmissão (Cliente)
+            👀 Iniciar Cliente (Visualizador)
         </button>
     </main>
 
     <!-- Interface do Transmissor -->
     <section id="broadcaster-ui" class="w-full max-w-2xl hidden flex-col gap-4">
-        <div class="bg-gray-800 p-4 rounded-lg shadow flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div>
-                <span class="text-sm text-gray-400 block">ID da Sala (Envie para o Cliente):</span>
-                <span id="room-id-display" class="text-xl font-mono text-yellow-400 select-all tracking-wider font-bold">Gerando...</span>
-            </div>
-            <div class="flex flex-col gap-2 w-full sm:w-auto">
-                <select id="camera-select" class="bg-gray-700 text-white text-sm rounded p-2 border border-gray-600 focus:outline-none focus:border-blue-500 w-full">
+        <div class="bg-gray-800 p-4 rounded-lg shadow flex flex-col gap-4">
+            
+            <div class="flex flex-col sm:flex-row justify-between gap-4">
+                <select id="camera-select" class="bg-gray-700 text-white text-sm rounded p-2 border border-gray-600 w-full sm:w-1/2">
                     <option value="">Carregando câmeras...</option>
                 </select>
-                <button id="btn-toggle-wake" class="bg-yellow-600 hover:bg-yellow-700 text-sm py-2 px-3 rounded transition-colors flex items-center justify-center gap-2">
+                <button id="btn-toggle-wake" class="bg-yellow-600 hover:bg-yellow-700 text-sm py-2 px-3 rounded transition-colors flex items-center justify-center gap-2 sm:w-1/2">
                     <span id="wake-icon">🔓</span> Tela: Desprotegida
                 </button>
             </div>
+
+            <div class="border-t border-gray-700 pt-4">
+                <label class="text-sm text-yellow-400 font-bold block mb-1">1. Seu Token (Copie e envie ao Cliente):</label>
+                <textarea id="broadcaster-offer-text" class="w-full bg-gray-900 text-gray-300 p-2 rounded h-20 outline-none" readonly placeholder="Aguardando geração da oferta..."></textarea>
+                <button id="btn-copy-offer" class="mt-2 bg-gray-600 hover:bg-gray-500 text-xs py-1 px-3 rounded w-full">Copiar Meu Token</button>
+            </div>
+
+            <div class="border-t border-gray-700 pt-4">
+                <label class="text-sm text-green-400 font-bold block mb-1">4. Cole aqui o Token Resposta do Cliente:</label>
+                <textarea id="broadcaster-answer-input" class="w-full bg-gray-700 text-white p-2 rounded h-20 outline-none focus:border-blue-500 border border-gray-600" placeholder="Cole o token recebido do cliente aqui..."></textarea>
+                <button id="btn-connect-broadcaster" class="mt-2 bg-blue-600 hover:bg-blue-700 font-bold py-2 px-4 rounded w-full">Conectar P2P</button>
+            </div>
         </div>
+        
         <video id="local-video" autoplay playsinline muted></video>
-        <p class="text-xs text-center text-gray-500 mt-2">Atenção: Não bloqueie a tela do celular. Use o botão acima para impedir que ela apague sozinha, e abaixe o brilho manualmente.</p>
     </section>
 
     <!-- Interface do Visualizador -->
     <section id="viewer-ui" class="w-full max-w-2xl hidden flex-col gap-4">
-        <div class="bg-gray-800 p-4 rounded-lg shadow flex flex-col sm:flex-row gap-2">
-            <input type="text" id="join-room-input" placeholder="Digite o ID da Sala..." class="flex-1 bg-gray-700 text-white rounded p-3 border border-gray-600 focus:outline-none focus:border-green-500 font-mono text-center sm:text-left">
-            <button id="btn-join-room" class="bg-green-600 hover:bg-green-700 font-bold py-3 px-6 rounded transition-colors w-full sm:w-auto">
-                Conectar
-            </button>
+        <div class="bg-gray-800 p-4 rounded-lg shadow flex flex-col gap-4">
+            
+            <div>
+                <label class="text-sm text-yellow-400 font-bold block mb-1">2. Cole o Token do Servidor aqui:</label>
+                <textarea id="viewer-offer-input" class="w-full bg-gray-700 text-white p-2 rounded h-20 outline-none focus:border-green-500 border border-gray-600" placeholder="Cole o token do Servidor/Câmera aqui..."></textarea>
+                <button id="btn-generate-answer" class="mt-2 bg-green-600 hover:bg-green-700 font-bold py-2 px-4 rounded w-full">Gerar Minha Resposta</button>
+            </div>
+
+            <div class="border-t border-gray-700 pt-4 hidden" id="viewer-answer-section">
+                <label class="text-sm text-green-400 font-bold block mb-1">3. Seu Token Resposta (Envie de volta ao Servidor):</label>
+                <textarea id="viewer-answer-text" class="w-full bg-gray-900 text-gray-300 p-2 rounded h-20 outline-none" readonly></textarea>
+                <button id="btn-copy-answer" class="mt-2 bg-gray-600 hover:bg-gray-500 text-xs py-1 px-3 rounded w-full">Copiar Minha Resposta</button>
+            </div>
         </div>
+
         <video id="remote-video" autoplay playsinline></video>
     </section>
 
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
-        import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, addDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
-
-        // Constantes e Variáveis Globais
+    <script>
+        // Servidores STUN públicos (Obrigatórios para descobrir IPs através do NAT)
         const configuration = {
             iceServers: [
                 { urls: 'stun:stun1.l.google.com:19302' },
@@ -79,65 +92,53 @@
         let localStream = null;
         let remoteStream = null;
         let wakeLock = null;
-        let currentRoomId = null;
-        let currentUserId = null;
-        
+
         // Elementos DOM
         const statusText = document.getElementById('status-text');
         const roleSelection = document.getElementById('role-selection');
+        
+        // UI Transmissor
         const broadcasterUi = document.getElementById('broadcaster-ui');
-        const viewerUi = document.getElementById('viewer-ui');
-        
         const localVideo = document.getElementById('local-video');
-        const remoteVideo = document.getElementById('remote-video');
-        
-        const btnRoleBroadcaster = document.getElementById('btn-role-broadcaster');
-        const btnRoleViewer = document.getElementById('btn-role-viewer');
-        
-        const roomIdDisplay = document.getElementById('room-id-display');
         const cameraSelect = document.getElementById('camera-select');
         const btnToggleWake = document.getElementById('btn-toggle-wake');
         const wakeIcon = document.getElementById('wake-icon');
+        const broadcasterOfferText = document.getElementById('broadcaster-offer-text');
+        const btnCopyOffer = document.getElementById('btn-copy-offer');
+        const broadcasterAnswerInput = document.getElementById('broadcaster-answer-input');
+        const btnConnectBroadcaster = document.getElementById('btn-connect-broadcaster');
         
-        const joinRoomInput = document.getElementById('join-room-input');
-        const btnJoinRoom = document.getElementById('btn-join-room');
+        // UI Visualizador
+        const viewerUi = document.getElementById('viewer-ui');
+        const remoteVideo = document.getElementById('remote-video');
+        const viewerOfferInput = document.getElementById('viewer-offer-input');
+        const btnGenerateAnswer = document.getElementById('btn-generate-answer');
+        const viewerAnswerSection = document.getElementById('viewer-answer-section');
+        const viewerAnswerText = document.getElementById('viewer-answer-text');
+        const btnCopyAnswer = document.getElementById('btn-copy-answer');
 
-        // Inicialização do Firebase (Respeitando regras de Canvas)
-        let db, auth, appId;
-        try {
-            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-            appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            
-            const app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-        } catch (error) {
-            statusText.innerText = "Erro Crítico: Configuração do Firebase ausente no ambiente.";
-            console.error(error);
+        // ==========================================
+        // Utilitários de Tokenização (SDP para Base64)
+        // ==========================================
+        function encodeToken(obj) {
+            return btoa(JSON.stringify(obj));
         }
 
-        // Caminhos Base do Firestore (Obrigatório seguir a regra estrita)
-        const getRoomDocRef = (roomId) => doc(db, 'artifacts', appId, 'public', 'data', 'webrtc_rooms', roomId);
-        const getCallerCandidatesRef = (roomId) => collection(db, 'artifacts', appId, 'public', 'data', 'webrtc_rooms', roomId, 'callerCandidates');
-        const getCalleeCandidatesRef = (roomId) => collection(db, 'artifacts', appId, 'public', 'data', 'webrtc_rooms', roomId, 'calleeCandidates');
-
-        // Autenticação Inicial
-        async function initAuth() {
+        function decodeToken(token) {
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                statusText.innerText = "Erro de Autenticação.";
-                console.error(error);
+                return JSON.parse(atob(token));
+            } catch (e) {
+                alert("Token inválido ou corrompido.");
+                return null;
             }
         }
 
-        // Utilitário para gerar ID curto
-        function generateRoomId() {
-            return Math.floor(100000 + Math.random() * 900000).toString(); // 6 digitos
+        function copyToClipboard(elementId) {
+            const copyText = document.getElementById(elementId);
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            alert("Token copiado para a área de transferência!");
         }
 
         // ==========================================
@@ -163,7 +164,7 @@
         async function openCamera(deviceId = null) {
             const constraints = {
                 video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: "environment" },
-                audio: true // Captura áudio também
+                audio: true 
             };
 
             try {
@@ -174,7 +175,6 @@
                 localStream = await navigator.mediaDevices.getUserMedia(constraints);
                 localVideo.srcObject = localStream;
                 
-                // Se já existir conexão P2P, substitui a track de vídeo
                 if (peerConnection) {
                     const videoTrack = localStream.getVideoTracks()[0];
                     const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
@@ -184,8 +184,7 @@
                 }
                 return true;
             } catch (error) {
-                statusText.innerText = "Erro: Permissão de câmera negada.";
-                console.error("Erro ao abrir câmera:", error);
+                statusText.innerHTML = "<span class='text-red-500 font-bold'>Erro: Permissão de câmera negada.</span>";
                 return false;
             }
         }
@@ -194,7 +193,6 @@
             const deviceId = e.target.value;
             statusText.innerText = "Trocando câmera...";
             await openCamera(deviceId);
-            statusText.innerText = "Câmera trocada. Transmitindo.";
         });
 
         // ==========================================
@@ -202,191 +200,172 @@
         // ==========================================
         async function toggleWakeLock() {
             if (!('wakeLock' in navigator)) {
-                statusText.innerText = "Wake Lock API não suportada neste navegador.";
+                alert("Wake Lock API não suportada.");
                 return;
             }
-
             try {
                 if (wakeLock !== null) {
                     await wakeLock.release();
                     wakeLock = null;
                     btnToggleWake.classList.replace('bg-green-600', 'bg-yellow-600');
-                    btnToggleWake.classList.replace('hover:bg-green-700', 'hover:bg-yellow-700');
                     wakeIcon.innerText = '🔓';
-                    btnToggleWake.innerHTML = '<span id="wake-icon">🔓</span> Tela: Desprotegida';
                 } else {
                     wakeLock = await navigator.wakeLock.request('screen');
                     btnToggleWake.classList.replace('bg-yellow-600', 'bg-green-600');
-                    btnToggleWake.classList.replace('hover:bg-yellow-700', 'hover:bg-green-700');
                     wakeIcon.innerText = '🔒';
-                    btnToggleWake.innerHTML = '<span id="wake-icon">🔒</span> Tela: Ativa (Não apaga)';
-                    
-                    wakeLock.addEventListener('release', () => {
-                        console.log('Wake Lock liberado pelo sistema.');
-                    });
                 }
             } catch (err) {
-                console.error(`Erro Wake Lock: ${err.name}, ${err.message}`);
+                console.error(`Erro Wake Lock: ${err.message}`);
             }
         }
         btnToggleWake.addEventListener('click', toggleWakeLock);
 
         // ==========================================
-        // Lógica P2P: Transmissor (Broadcaster)
+        // Fluxo P2P: Transmissor (Servidor)
         // ==========================================
-        async function startBroadcasting() {
-            if (!currentUserId) return;
-            
+        document.getElementById('btn-role-broadcaster').addEventListener('click', async () => {
             roleSelection.classList.add('hidden');
             broadcasterUi.classList.remove('hidden');
             broadcasterUi.classList.add('flex');
-            statusText.innerText = "Solicitando permissão da câmera...";
+            statusText.innerText = "Preparando servidor local...";
 
             const cameraOpened = await openCamera();
             if (!cameraOpened) return;
-            await getCameras(); // Popula o select após pegar permissão real
-
-            currentRoomId = generateRoomId();
-            roomIdDisplay.innerText = currentRoomId;
-            statusText.innerText = `Sala criada. Aguardando conexão do cliente...`;
+            await getCameras();
 
             peerConnection = new RTCPeerConnection(configuration);
-            
-            // Adiciona as tracks locais à conexão P2P
+
             localStream.getTracks().forEach(track => {
                 peerConnection.addTrack(track, localStream);
             });
 
-            const roomRef = getRoomDocRef(currentRoomId);
-            const callerCandidatesRef = getCallerCandidatesRef(currentRoomId);
-
-            // Coleta candidatos ICE locais (Transmissor) e salva no Firestore
-            peerConnection.addEventListener('icecandidate', async event => {
-                if (event.candidate) {
-                    await addDoc(callerCandidatesRef, event.candidate.toJSON());
-                }
-            });
-
-            // Cria a Oferta SDP
+            // Gerar Oferta
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
 
-            const roomWithOffer = {
-                offer: { type: offer.type, sdp: offer.sdp },
-                createdAt: new Date().getTime(),
-                broadcasterId: currentUserId
-            };
-            await setDoc(roomRef, roomWithOffer);
-
-            // Escuta a Resposta do Cliente
-            onSnapshot(roomRef, async snapshot => {
-                const data = snapshot.data();
-                if (!peerConnection.currentRemoteDescription && data && data.answer) {
-                    statusText.innerText = "Cliente conectado! Estabelecendo P2P...";
-                    const rtcSessionDescription = new RTCSessionDescription(data.answer);
-                    await peerConnection.setRemoteDescription(rtcSessionDescription);
+            // IMPORTANTE: Em sinalização manual, devemos esperar a coleta de TODOS os ICE candidates (STUN)
+            // antes de entregar o token para o usuário copiar.
+            peerConnection.onicegatheringstatechange = () => {
+                if (peerConnection.iceGatheringState === 'complete') {
+                    const fullOffer = peerConnection.localDescription;
+                    broadcasterOfferText.value = encodeToken(fullOffer);
+                    statusText.innerText = "Token gerado. Copie e envie para o cliente.";
                 }
-            }, (error) => console.error("Erro snapshot sala:", error));
-
-            // Escuta os candidatos ICE do Cliente
-            onSnapshot(getCalleeCandidatesRef(currentRoomId), snapshot => {
-                snapshot.docChanges().forEach(async change => {
-                    if (change.type === 'added') {
-                        let data = change.doc.data();
-                        await peerConnection.addIceCandidate(new RTCIceCandidate(data));
-                    }
-                });
-            }, (error) => console.error("Erro snapshot ICE callee:", error));
+            };
             
-            // Tenta ativar Wake Lock automaticamente
+            // Tratamento de segurança caso o state 'complete' não dispare rapidamente em algumas redes
+            setTimeout(() => {
+                if (broadcasterOfferText.value === "" && peerConnection.iceGatheringState !== 'new') {
+                     broadcasterOfferText.value = encodeToken(peerConnection.localDescription);
+                }
+            }, 3000);
+
             toggleWakeLock();
-        }
+        });
 
-        // ==========================================
-        // Lógica P2P: Visualizador (Viewer)
-        // ==========================================
-        async function joinRoom() {
-            if (!currentUserId) return;
-            
-            const roomId = joinRoomInput.value.trim();
-            if (!roomId) {
-                alert("Digite um ID de sala válido."); // Fallback nativo simples aceitável aqui apenas para validação síncrona
+        btnCopyOffer.addEventListener('click', () => copyToClipboard('broadcaster-offer-text'));
+
+        btnConnectBroadcaster.addEventListener('click', async () => {
+            const answerToken = broadcasterAnswerInput.value.trim();
+            if (!answerToken) {
+                alert("Cole o token do cliente primeiro.");
                 return;
             }
 
-            statusText.innerText = "Conectando à sala...";
-            const roomRef = getRoomDocRef(roomId);
-            const roomSnapshot = await getDoc(roomRef);
+            const answerDesc = decodeToken(answerToken);
+            if (!answerDesc) return;
 
-            if (!roomSnapshot.exists()) {
-                statusText.innerText = "Erro: Sala não encontrada.";
-                return;
+            try {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(answerDesc));
+                statusText.innerText = "Conexão P2P Estabelecida!";
+                broadcasterAnswerInput.value = "";
+            } catch (e) {
+                statusText.innerHTML = "<span class='text-red-500 font-bold'>Erro ao processar resposta do cliente.</span>";
+                console.error(e);
             }
+        });
 
+        // ==========================================
+        // Fluxo P2P: Visualizador (Cliente)
+        // ==========================================
+        document.getElementById('btn-role-viewer').addEventListener('click', () => {
             roleSelection.classList.add('hidden');
             viewerUi.classList.remove('hidden');
             viewerUi.classList.add('flex');
+            statusText.innerText = "Aguardando token do Servidor...";
+        });
+
+        btnGenerateAnswer.addEventListener('click', async () => {
+            const offerToken = viewerOfferInput.value.trim();
+            if (!offerToken) {
+                alert("Cole o token do servidor primeiro.");
+                return;
+            }
+
+            const offerDesc = decodeToken(offerToken);
+            if (!offerDesc) return;
 
             peerConnection = new RTCPeerConnection(configuration);
-            
-            // Prepara elemento de vídeo remoto
             remoteStream = new MediaStream();
             remoteVideo.srcObject = remoteStream;
 
-            // Ao receber tracks do transmissor, adiciona ao vídeo remoto
             peerConnection.addEventListener('track', event => {
                 event.streams[0].getTracks().forEach(track => {
                     remoteStream.addTrack(track);
                 });
-                statusText.innerText = "Recebendo transmissão ao vivo.";
+                statusText.innerText = "Recebendo stream direta.";
             });
 
-            const calleeCandidatesRef = getCalleeCandidatesRef(roomId);
-            
-            // Coleta candidatos ICE locais (Visualizador)
-            peerConnection.addEventListener('icecandidate', async event => {
-                if (event.candidate) {
-                    await addDoc(calleeCandidatesRef, event.candidate.toJSON());
-                }
-            });
+            try {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(offerDesc));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
 
-            // Extrai Oferta e gera Resposta
-            const offer = roomSnapshot.data().offer;
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-            
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
+                viewerAnswerSection.classList.remove('hidden');
+                statusText.innerText = "Coletando rotas de rede...";
 
-            const roomWithAnswer = { answer: { type: answer.type, sdp: answer.sdp } };
-            await updateDoc(roomRef, roomWithAnswer);
-
-            // Escuta ICE do Transmissor
-            onSnapshot(getCallerCandidatesRef(roomId), snapshot => {
-                snapshot.docChanges().forEach(async change => {
-                    if (change.type === 'added') {
-                        let data = change.doc.data();
-                        await peerConnection.addIceCandidate(new RTCIceCandidate(data));
+                // Aguarda coleta ICE para gerar token completo
+                peerConnection.onicegatheringstatechange = () => {
+                    if (peerConnection.iceGatheringState === 'complete') {
+                        const fullAnswer = peerConnection.localDescription;
+                        viewerAnswerText.value = encodeToken(fullAnswer);
+                        statusText.innerText = "Token de Resposta gerado. Envie de volta ao servidor.";
                     }
-                });
-            }, (error) => console.error("Erro snapshot ICE caller:", error));
-        }
+                };
 
-        // Listeners de UI
-        btnRoleBroadcaster.addEventListener('click', startBroadcasting);
-        btnRoleViewer.addEventListener('click', joinRoom);
+                setTimeout(() => {
+                    if (viewerAnswerText.value === "" && peerConnection.iceGatheringState !== 'new') {
+                         viewerAnswerText.value = encodeToken(peerConnection.localDescription);
+                    }
+                }, 3000);
 
-        // Fluxo principal (Auth -> Init)
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUserId = user.uid;
-                statusText.innerText = "Autenticado. Pronto para uso.";
-            } else {
-                currentUserId = null;
+            } catch (e) {
+                statusText.innerHTML = "<span class='text-red-500 font-bold'>Erro ao gerar resposta. Token do servidor pode ser inválido.</span>";
+                console.error(e);
             }
         });
 
-        // Inicia o app garantindo a autenticação
-        initAuth();
+        btnCopyAnswer.addEventListener('click', () => copyToClipboard('viewer-answer-text'));
+
+        // ==========================================
+        // Monitoramento de Conexão
+        // ==========================================
+        function setupConnectionMonitoring() {
+            if(!peerConnection) return;
+            peerConnection.onconnectionstatechange = () => {
+                if (peerConnection.connectionState === 'connected') {
+                    statusText.innerText = "Conexão P2P Estabelecida! (Direto)";
+                    statusText.classList.add('text-green-400');
+                } else if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
+                    statusText.innerText = "Conexão perdida. É necessário reiniciar o processo manual.";
+                    statusText.classList.add('text-red-500');
+                }
+            };
+        }
+        
+        // Adiciona listener de monitoramento no click dos papéis
+        document.getElementById('btn-role-broadcaster').addEventListener('click', () => { setTimeout(setupConnectionMonitoring, 1000) });
+        btnGenerateAnswer.addEventListener('click', () => { setTimeout(setupConnectionMonitoring, 1000) });
 
     </script>
 </body>
