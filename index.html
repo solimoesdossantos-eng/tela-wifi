@@ -2,95 +2,121 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comunicação Sigilosa E2EE (Acesso Direto)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Portal de Acesso Cidadão</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #1f2937; }
-        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
-        .glass { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(10px); }
+        /* Custom Scrollbar minimalista para mobile */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+        .glass { background: #111827; border: 1px solid #1f2937; }
+        /* Impede zoom indesejado em inputs no iOS */
+        input { font-size: 16px !important; }
     </style>
 </head>
-<body class="bg-gray-900 text-white h-screen overflow-hidden flex items-center justify-center font-sans">
+<body class="bg-gray-900 text-gray-100 h-[100dvh] overflow-hidden flex items-center justify-center font-sans">
 
-    <!-- Tela de Login / Entrada na Sala -->
-    <div id="login-screen" class="w-full max-w-sm p-8 glass rounded-2xl border border-gray-700 shadow-2xl transition-all duration-300 z-10">
-        <div class="text-center mb-8">
-            <i class="fas fa-user-secret text-5xl text-emerald-500 mb-4"></i>
-            <h1 class="text-3xl font-bold tracking-tight">Acesso Restrito</h1>
-            <p class="text-gray-400 mt-2 text-sm">Insira a credencial de acesso</p>
-        </div>
+    <!-- Tela de Login Disfarçada (Estilo Gov/Corporate Escuro) -->
+    <div id="login-screen" class="w-full h-full sm:h-auto sm:max-w-sm sm:p-8 sm:rounded-xl sm:border border-gray-800 bg-gray-900 sm:bg-[#111827] flex flex-col justify-center px-6 relative z-10 transition-all duration-300">
         
-        <form id="login-form" class="space-y-5">
-            <div>
-                <input type="password" id="room-password" required class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-4 text-center text-xl tracking-widest text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors" placeholder="•••••••">
+        <!-- Detalhe visual (Fita superior simulando identidade visual oficial) -->
+        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#00A859] via-[#FFCC29] to-[#005B9F] sm:rounded-t-xl"></div>
+
+        <div id="login-form-container" class="w-full">
+            <div class="mb-8">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-8 h-8 rounded-full bg-[#005B9F] flex items-center justify-center text-white font-bold text-lg">
+                        br
+                    </div>
+                    <h1 class="text-2xl font-semibold tracking-tight text-white">Acesso Cidadão</h1>
+                </div>
+                <p class="text-gray-400 text-sm">Identifique-se para acessar os serviços do portal.</p>
             </div>
-            <button type="submit" id="join-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition-colors flex items-center justify-center gap-2">
-                <i class="fas fa-sign-in-alt"></i> Acessar
-            </button>
-            <p id="login-error" class="text-red-400 text-sm text-center hidden"></p>
-        </form>
+            
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Senha de Acesso / Token</label>
+                    <input type="password" id="room-password" inputmode="numeric" required class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3.5 text-white focus:outline-none focus:border-[#005B9F] focus:ring-1 focus:ring-[#005B9F] transition-colors" placeholder="Digite sua credencial">
+                </div>
+                
+                <button type="submit" id="join-btn" class="w-full bg-[#005B9F] hover:bg-[#004780] active:bg-[#003865] text-white font-medium py-3.5 px-4 rounded-full shadow-lg transition-colors flex items-center justify-center gap-2">
+                    Entrar
+                </button>
+                <p id="login-error" class="text-red-400 text-xs text-center hidden mt-4"></p>
+            </form>
+            
+            <div class="mt-8 text-center text-xs text-gray-500 border-t border-gray-800 pt-6">
+                Ambiente Seguro. Dados trafegados com criptografia.<br>
+                <a href="#" class="text-[#005B9F] hover:underline mt-1 inline-block">Dúvidas sobre o acesso?</a>
+            </div>
+        </div>
+
+        <!-- Tela de Carregamento Transparente (Usada no Auto-login do F5) -->
+        <div id="login-loading" class="hidden w-full flex flex-col items-center justify-center">
+            <i class="fas fa-circle-notch fa-spin text-3xl text-[#005B9F] mb-4"></i>
+            <p class="text-gray-400 text-sm">Autenticando sessão...</p>
+        </div>
     </div>
 
     <!-- Interface Principal do Chat -->
-    <div id="chat-screen" class="hidden w-full h-full flex flex-col md:flex-row relative">
+    <div id="chat-screen" class="hidden w-full h-[100dvh] flex flex-col relative bg-gray-900">
         
-        <!-- Área principal de Chat -->
-        <div class="flex-1 flex flex-col h-full bg-gray-900 border-r border-gray-800 relative z-0">
-            <!-- Header -->
-            <header class="bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center shadow-md">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-emerald-900 rounded-full flex items-center justify-center border border-emerald-500">
-                        <i class="fas fa-shield-alt text-emerald-400"></i>
-                    </div>
-                    <div>
-                        <h2 class="font-bold text-lg leading-tight">Canal Seguro</h2>
-                        <p id="user-identity" class="text-xs text-emerald-400 flex items-center gap-1">
-                            <i class="fas fa-user-tag text-[10px]"></i> Identidade Gerada
-                        </p>
-                    </div>
+        <!-- Header Minimalista -->
+        <header class="bg-gray-800 border-b border-gray-700 px-3 py-2.5 flex justify-between items-center z-10 shrink-0">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-full bg-[#005B9F]/20 flex items-center justify-center text-[#005B9F]">
+                    <i class="fas fa-shield-halved text-sm"></i>
                 </div>
-                <div class="flex gap-2">
-                    <button id="btn-leave" class="p-3 text-red-400 hover:text-red-300 hover:bg-gray-700 rounded-full transition-colors" title="Sair e Destruir Sessão">
-                        <i class="fas fa-sign-out-alt"></i> Sair
-                    </button>
+                <div class="flex flex-col">
+                    <h2 class="font-semibold text-[15px] leading-tight text-gray-100">Portal de Atendimento</h2>
+                    <p id="user-identity" class="text-[11px] text-gray-400 leading-none">
+                        Sessão Ativa
+                    </p>
                 </div>
-            </header>
-
-            <!-- Lista de Mensagens -->
-            <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-4">
-                <div class="text-center text-xs text-gray-500 my-4">
-                    <i class="fas fa-lock"></i> As mensagens são criptografadas de ponta-a-ponta.<br>Apenas quem possui a senha pode decifrá-las.
-                </div>
-                <!-- Mensagens renderizadas dinamicamente aqui -->
             </div>
+            <button id="btn-leave" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-red-400 active:bg-gray-700 rounded-full transition-colors">
+                <i class="fas fa-power-off"></i>
+            </button>
+        </header>
 
-            <!-- Input Area -->
-            <div class="bg-gray-800 border-t border-gray-700 p-4">
-                <form id="message-form" class="flex items-center gap-2">
-                    <input type="text" id="message-input" autocomplete="off" required class="flex-1 bg-gray-700 border-none rounded-full px-6 py-3 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors" placeholder="Digite sua mensagem...">
-                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white w-12 h-12 flex items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </form>
+        <!-- Lista de Mensagens (Flex-1 para ocupar o espaço dinamicamente) -->
+        <div id="messages-container" class="flex-1 overflow-y-auto p-3 space-y-3 pb-4">
+            <div class="text-center text-[10px] text-gray-500 my-2 px-4">
+                <i class="fas fa-lock mb-1"></i><br>
+                Criptografia E2EE ativa.<br>As mensagens não podem ser interceptadas.
             </div>
+            <!-- Mensagens renderizadas dinamicamente aqui -->
+        </div>
+
+        <!-- Input Area Fixada na Base -->
+        <div class="bg-gray-800 border-t border-gray-700 p-2 shrink-0 pb-safe">
+            <form id="message-form" class="flex items-end gap-2">
+                <textarea id="message-input" rows="1" required class="flex-1 bg-gray-700 border border-gray-600 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#005B9F] resize-none max-h-32 min-h-[44px]" placeholder="Mensagem..."></textarea>
+                
+                <button type="submit" class="bg-[#005B9F] hover:bg-[#004780] active:scale-95 text-white w-[44px] h-[44px] rounded-full flex items-center justify-center shrink-0 transition-transform shadow-md">
+                    <i class="fas fa-paper-plane text-sm ml-[-2px]"></i>
+                </button>
+            </form>
         </div>
     </div>
 
-    <!-- Modal de Alerta Customizado -->
-    <div id="custom-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
-        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 max-w-sm w-full shadow-2xl">
-            <h3 id="modal-title" class="text-xl font-bold mb-2">Atenção</h3>
-            <p id="modal-message" class="text-gray-300 mb-6"></p>
+    <!-- Modal de Alerta Customizado (Mantido para Erros Críticos) -->
+    <div id="custom-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 w-full max-w-sm shadow-2xl">
+            <h3 id="modal-title" class="text-lg font-bold mb-2 text-white">Atenção</h3>
+            <p id="modal-message" class="text-gray-300 mb-6 text-sm"></p>
             <div class="flex justify-end">
-                <button id="btn-modal-close" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium">Entendido</button>
+                <button id="btn-modal-close" class="bg-[#005B9F] hover:bg-[#004780] text-white px-5 py-2.5 rounded-lg font-medium text-sm">OK</button>
             </div>
         </div>
     </div>
+
+    <!-- Padding para Notch de iPhones -->
+    <style>
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0.5rem); }
+    </style>
 
     <!-- Firebase SDKs -->
     <script type="module">
@@ -116,36 +142,35 @@
             container.scrollTop = container.scrollHeight;
         }
 
+        // Auto-resize do textarea para melhor UX mobile
+        const tx = document.getElementById('message-input');
+        tx.addEventListener("input", OnInput, false);
+        function OnInput() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            scrollToBottom();
+        }
+
         // ==========================================
         // CONFIGURAÇÃO DO AMBIENTE E FIREBASE
         // ==========================================
-        
-        // ATENÇÃO: Para rodar em produção (GitHub Pages), substitua os valores abaixo 
-        // pelas credenciais geradas no painel do seu projeto Firebase.
         const defaultExternalConfig = {
- apiKey: "AIzaSyBGTSOsg6JcdelyoSPc0MLjQmr0jxwUVdk",
-  authDomain: "studio-2554807183-f68d5.firebaseapp.com",
-  projectId: "studio-2554807183-f68d5",
-  storageBucket: "studio-2554807183-f68d5.firebasestorage.app",
-  messagingSenderId: "584439934606",
-  appId: "1:584439934606:web:a8289e45da870be89363df"
+            apiKey: "AIzaSyBGTSOsg6JcdelyoSPc0MLjQmr0jxwUVdk",
+            authDomain: "studio-2554807183-f68d5.firebaseapp.com",
+            projectId: "studio-2554807183-f68d5",
+            storageBucket: "studio-2554807183-f68d5.firebasestorage.app",
+            messagingSenderId: "584439934606",
+            appId: "1:584439934606:web:a8289e45da870be89363df"
         };
 
         const isRunningInCanvas = typeof __firebase_config !== 'undefined';
         const firebaseConfig = isRunningInCanvas ? JSON.parse(__firebase_config) : defaultExternalConfig;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-secure-direct-chat-app';
 
         let app, auth, db;
         let isFirebaseInitialized = false;
 
-        // Validação estrita para evitar crash silencioso fora do Canvas
         if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("COLOQUE_SUA_API_KEY")) {
-            console.error("Firebase não configurado para ambiente de produção.");
-            setTimeout(() => {
-                showModal("Falta de Configuração", "O aplicativo requer infraestrutura (Firebase) para operar. Edite o arquivo HTML e insira suas credenciais no objeto 'defaultExternalConfig'.");
-                document.getElementById('join-btn').disabled = true;
-                document.getElementById('join-btn').classList.replace('bg-emerald-600', 'bg-gray-600');
-            }, 500);
+            console.error("Firebase não configurado.");
         } else {
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
@@ -171,7 +196,6 @@
         // ==========================================
         // MOTOR CRIPTOGRÁFICO (E2EE Web Crypto API)
         // ==========================================
-        
         async function deriveKey(password, saltString) {
             const enc = new TextEncoder();
             const keyMaterial = await crypto.subtle.importKey(
@@ -181,16 +205,9 @@
                 false,
                 ["deriveBits", "deriveKey"]
             );
-            
             const salt = enc.encode(saltString);
-            
             return crypto.subtle.deriveKey(
-                {
-                    name: "PBKDF2",
-                    salt: salt,
-                    iterations: 100000,
-                    hash: "SHA-256"
-                },
+                { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
                 keyMaterial,
                 { name: "AES-GCM", length: 256 },
                 true,
@@ -202,13 +219,9 @@
             const enc = new TextEncoder();
             const iv = crypto.getRandomValues(new Uint8Array(12));
             const encodedData = enc.encode(dataString);
-            
             const ciphertext = await crypto.subtle.encrypt(
-                { name: "AES-GCM", iv: iv },
-                key,
-                encodedData
+                { name: "AES-GCM", iv: iv }, key, encodedData
             );
-            
             return {
                 ciphertext: arrayBufferToBase64(ciphertext),
                 iv: arrayBufferToBase64(iv)
@@ -219,18 +232,13 @@
             try {
                 const ciphertext = base64ToArrayBuffer(ciphertextBase64);
                 const iv = base64ToArrayBuffer(ivBase64);
-                
                 const decryptedData = await crypto.subtle.decrypt(
-                    { name: "AES-GCM", iv: iv },
-                    key,
-                    ciphertext
+                    { name: "AES-GCM", iv: iv }, key, ciphertext
                 );
-                
                 const dec = new TextDecoder();
                 return dec.decode(decryptedData);
             } catch (error) {
-                console.error("Erro na descriptografia:", error);
-                return "[Mensagem Ilegível - Dados Corrompidos]";
+                return "[Falha na decifragem]";
             }
         }
 
@@ -254,8 +262,71 @@
         }
 
         // ==========================================
-        // AUTENTICAÇÃO E INICIALIZAÇÃO
+        // ROTINA DE LOGIN PRINCIPAL E AUTO-LOGIN (F5)
         // ==========================================
+        async function performLoginProcess(passwordInput, isAutoLogin = false) {
+            const btn = document.getElementById('join-btn');
+            const errorP = document.getElementById('login-error');
+
+            if (passwordInput !== REQUIRED_PASSWORD) {
+                if (isAutoLogin) {
+                    sessionStorage.removeItem('gov_br_secure_session'); // Limpa cache inválido
+                    document.getElementById('login-loading').classList.add('hidden');
+                    document.getElementById('login-form-container').classList.remove('hidden');
+                    return;
+                }
+                errorP.textContent = "Credencial inválida ou expirada.";
+                errorP.classList.remove('hidden');
+                document.getElementById('room-password').value = '';
+                return;
+            }
+
+            if (!state.user) {
+                if (!isAutoLogin) {
+                    errorP.textContent = "Aguardando conexão segura de rede...";
+                    errorP.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (!isAutoLogin) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processando...';
+                errorP.classList.add('hidden');
+            }
+
+            try {
+                // Deriva chave e salva sessão (Proteção F5)
+                state.cryptoKey = await deriveKey(passwordInput, state.roomId);
+                sessionStorage.setItem('gov_br_secure_session', passwordInput);
+                
+                // Gera identidade baseada no UID do Firebase para persistência visual
+                const shortUid = state.user.uid.substring(0, 4);
+                state.username = `Protocolo-${shortUid}`;
+
+                // Transição de UI
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('chat-screen').classList.remove('hidden');
+                document.getElementById('user-identity').textContent = state.username;
+
+                startChatListener();
+
+            } catch (error) {
+                console.error(error);
+                if (!isAutoLogin) {
+                    errorP.textContent = "Erro interno no protocolo de segurança.";
+                    errorP.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Entrar';
+                }
+            }
+        }
+
+        // ==========================================
+        // AUTENTICAÇÃO E INICIALIZAÇÃO FIREBASE
+        // ==========================================
+        let hasTriggeredAutoLogin = false;
+
         async function initAuth() {
             if (!isFirebaseInitialized) return;
             try {
@@ -265,83 +336,51 @@
                     await signInAnonymously(auth);
                 }
             } catch (error) {
-                console.error("Erro na autenticação Firebase:", error);
-                showModal("Erro de Conexão", "Falha na autenticação do banco de dados (Verifique as regras do Firestore/Auth).");
+                console.error("Erro auth:", error);
+                showModal("Manutenção", "Sistema temporariamente indisponível.");
             }
         }
 
         if (isFirebaseInitialized) {
-            onAuthStateChanged(auth, (user) => {
+            // Verifica se tem sessão cacheada no F5 para trocar a UI imediatamente
+            const cachedSession = sessionStorage.getItem('gov_br_secure_session');
+            if (cachedSession) {
+                document.getElementById('login-form-container').classList.add('hidden');
+                document.getElementById('login-loading').classList.remove('hidden');
+            }
+
+            onAuthStateChanged(auth, async (user) => {
                 state.user = user;
+                
+                // Se o usuário conectou e temos uma sessão salva, executa o login invisível
+                if (user && cachedSession && !hasTriggeredAutoLogin) {
+                    hasTriggeredAutoLogin = true;
+                    await performLoginProcess(cachedSession, true);
+                } else if (!user && cachedSession) {
+                    // Se o firebase desconectou forçado, volta pro login
+                    sessionStorage.removeItem('gov_br_secure_session');
+                    document.getElementById('login-loading').classList.add('hidden');
+                    document.getElementById('login-form-container').classList.remove('hidden');
+                }
             });
             initAuth();
         }
 
-        // ==========================================
-        // LÓGICA DE LOGIN ESTREITO (Apenas Senha)
-        // ==========================================
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
+        document.getElementById('login-form').addEventListener('submit', (e) => {
             e.preventDefault();
-            
             if (!isFirebaseInitialized) {
-                showModal("Ação Bloqueada", "O aplicativo não está configurado para acessar a rede.");
+                showModal("Sistema Offline", "Não foi possível conectar aos servidores principais.");
                 return;
             }
-
-            const btn = document.getElementById('join-btn');
-            const errorP = document.getElementById('login-error');
-            const passwordInput = document.getElementById('room-password').value;
-
-            // Verificação hardcoded exigida
-            if (passwordInput !== REQUIRED_PASSWORD) {
-                errorP.textContent = "Acesso Negado. Credencial inválida.";
-                errorP.classList.remove('hidden');
-                document.getElementById('room-password').value = '';
-                return;
-            }
-
-            if (!state.user) {
-                errorP.textContent = "Conexão rejeitada pelo servidor. Verifique a configuração do Firebase Auth.";
-                errorP.classList.remove('hidden');
-                return;
-            }
-
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Autenticando...';
-            errorP.classList.add('hidden');
-
-            try {
-                // Deriva a chave criptográfica usando a senha e a sala hardcoded
-                state.cryptoKey = await deriveKey(passwordInput, state.roomId);
-                
-                // Gera identidade aleatória local
-                state.username = `Agente-${Math.floor(Math.random() * 9000) + 1000}`;
-
-                // Transição de tela
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('chat-screen').classList.remove('hidden');
-                
-                // Atualiza UI com a identidade
-                document.getElementById('user-identity').innerHTML = `<i class="fas fa-user-tag text-[10px]"></i> Identidade: ${state.username}`;
-
-                // Inicia a escuta do banco de dados
-                startChatListener();
-
-            } catch (error) {
-                console.error(error);
-                errorP.textContent = "Erro interno no motor criptográfico.";
-                errorP.classList.remove('hidden');
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Acessar';
-            }
+            const pwd = document.getElementById('room-password').value;
+            performLoginProcess(pwd, false);
         });
 
         // ==========================================
         // LÓGICA DO CHAT (ENVIO E RECEBIMENTO)
         // ==========================================
-        
         function getChatCollectionPath() {
-            return collection(db, 'artifacts', appId, 'public', 'data', state.roomId);
+            return collection(db, `messages_channel_${state.roomId}`);
         }
 
         async function startChatListener() {
@@ -349,13 +388,16 @@
 
             const q = query(getChatCollectionPath()); 
 
-            state.messagesUnsubscribe = onSnapshot(q, async (snapshot) => {
+            state.messagesUnsubscribe = onSnapshot(q, { includeMetadataChanges: true }, async (snapshot) => {
                 const container = document.getElementById('messages-container');
                 
-                // Ordenação na memória
                 let docsData = [];
                 snapshot.forEach(doc => {
-                    docsData.push({ id: doc.id, ...doc.data() });
+                    docsData.push({ 
+                        id: doc.id, 
+                        hasPendingWrites: doc.metadata.hasPendingWrites,
+                        ...doc.data() 
+                    });
                 });
                 
                 docsData.sort((a, b) => {
@@ -364,7 +406,7 @@
                     return timeA - timeB;
                 });
 
-                container.innerHTML = `<div class="text-center text-xs text-gray-500 my-4"><i class="fas fa-lock"></i> Canal Estabelecido. Proteção E2EE ativa.</div>`;
+                container.innerHTML = `<div class="text-center text-[10px] text-gray-500 my-2 px-4"><i class="fas fa-lock mb-1"></i><br>Criptografia E2EE ativa.<br>As mensagens não podem ser interceptadas.</div>`;
 
                 for (const msgData of docsData) {
                     if (!msgData.ciphertext || !msgData.iv) continue;
@@ -373,43 +415,54 @@
                     
                     try {
                         const payload = JSON.parse(decryptedPayloadStr);
-                        renderMessage(msgData.id, payload.content, msgData.senderId === state.user.uid, msgData.senderName);
+                        renderMessage(msgData.id, payload.content, msgData.senderId === state.user.uid, msgData.senderName, msgData.hasPendingWrites);
                     } catch (e) {
-                        renderMessage(msgData.id, '[Erro de Decifragem]', msgData.senderId === state.user.uid, msgData.senderName);
+                        renderMessage(msgData.id, '[Corrompido]', msgData.senderId === state.user.uid, msgData.senderName, false);
                     }
                 }
                 scrollToBottom();
 
             }, (error) => {
-                console.error("Erro na escuta do Firestore:", error);
-                // Tratamento especial para erro de permissão (Missing or insufficient permissions)
+                console.error("Escuta falhou:", error);
                 if (error.code === 'permission-denied') {
-                    showModal("Acesso Negado (Firestore)", "O banco de dados bloqueou a leitura. Verifique as 'Security Rules' no painel do Firebase.");
-                } else {
-                    showModal("Desconexão", "A sincronização com a rede falhou.");
+                    showModal("Sessão Expirada", "Permissão negada pelo servidor central.");
+                    document.getElementById('btn-leave').click();
                 }
             });
         }
 
-        function renderMessage(id, textContent, isMine, senderName) {
+        function renderMessage(id, textContent, isMine, senderName, hasPendingWrites) {
             const container = document.getElementById('messages-container');
             const wrapper = document.createElement('div');
-            wrapper.className = `flex flex-col ${isMine ? 'items-end' : 'items-start'} mb-4 animate-fade-in`;
+            wrapper.className = `flex flex-col ${isMine ? 'items-end' : 'items-start'} animate-fade-in`;
 
             const nameDiv = document.createElement('div');
-            nameDiv.className = "text-xs text-gray-400 mb-1 px-1";
-            nameDiv.textContent = isMine ? "Você" : senderName;
+            nameDiv.className = `text-[10px] text-gray-400 mb-0.5 px-1 ${isMine ? 'hidden' : 'block'}`;
+            nameDiv.textContent = senderName;
             wrapper.appendChild(nameDiv);
 
             const bubble = document.createElement('div');
-            bubble.className = `max-w-[85%] rounded-2xl px-4 py-2 shadow-md ${isMine ? 'bg-emerald-600 text-white rounded-tr-none' : 'bg-gray-700 text-white rounded-tl-none'}`;
+            // Design mais limpo e compacto para responsividade
+            bubble.className = `max-w-[88%] rounded-2xl px-3 py-2 shadow-sm relative ${isMine ? 'bg-[#005B9F] text-white rounded-tr-[4px]' : 'bg-gray-800 border border-gray-700 text-gray-100 rounded-tl-[4px]'}`;
             
-            // Tratamento rigoroso XSS
+            const contentDiv = document.createElement('div');
+            contentDiv.className = "flex flex-wrap items-end justify-end gap-1.5";
+            
             const p = document.createElement('p');
-            p.className = "break-words whitespace-pre-wrap";
+            p.className = "break-words whitespace-pre-wrap flex-1 text-[14px] leading-snug";
             p.textContent = textContent;
-            bubble.appendChild(p);
+            contentDiv.appendChild(p);
 
+            // Ícones de status compactos
+            if (isMine) {
+                const statusIcon = document.createElement('i');
+                statusIcon.className = hasPendingWrites 
+                    ? "fas fa-clock text-[9px] text-blue-200/60 pb-[2px]" 
+                    : "fas fa-check-double text-[9px] text-blue-200 pb-[2px]";
+                contentDiv.appendChild(statusIcon);
+            }
+
+            bubble.appendChild(contentDiv);
             wrapper.appendChild(bubble);
             container.appendChild(wrapper);
         }
@@ -429,12 +482,8 @@
                     timestamp: serverTimestamp()
                 });
             } catch (error) {
-                console.error("Erro ao enviar:", error);
-                if (error.code === 'permission-denied') {
-                     showModal("Erro de Permissão", "Suas credenciais do Firebase não permitem gravação (Verifique as Security Rules).");
-                } else {
-                     showModal("Erro de Transmissão", "Falha ao enviar pacote criptografado.");
-                }
+                console.error("Erro enviar:", error);
+                showModal("Erro de Conexão", "Não foi possível enviar a mensagem. Verifique a rede.");
             }
         }
 
@@ -448,33 +497,40 @@
             }
             
             input.value = '';
+            input.style.height = 'auto'; // Reseta altura do textarea
             input.focus();
         });
 
         // ==========================================
-        // SAIR DA SALA
+        // SAIR E DESTRUIR SESSÃO
         // ==========================================
         document.getElementById('btn-leave').addEventListener('click', () => {
             state.cryptoKey = null;
+            hasTriggeredAutoLogin = false;
+            
+            // Destrói cache de F5
+            sessionStorage.removeItem('gov_br_secure_session');
             
             if (state.messagesUnsubscribe) state.messagesUnsubscribe();
 
             document.getElementById('messages-container').innerHTML = '';
             document.getElementById('chat-screen').classList.add('hidden');
             
-            const loginScreen = document.getElementById('login-screen');
-            loginScreen.classList.remove('hidden');
+            // Retorna UI do login
+            document.getElementById('login-loading').classList.add('hidden');
+            document.getElementById('login-form-container').classList.remove('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
             
             const btn = document.getElementById('join-btn');
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Acessar';
+            btn.innerHTML = 'Entrar';
             document.getElementById('room-password').value = '';
         });
 
         const style = document.createElement('style');
         style.innerHTML = `
-            .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+            .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         `;
         document.head.appendChild(style);
 
