@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Portal de Acesso Cidadão</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -12,16 +12,35 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
         .glass { background: #111827; border: 1px solid #1f2937; }
-        /* Impede zoom indesejado em inputs no iOS */
-        input { font-size: 16px !important; }
+        
+        /* Impede zoom indesejado em inputs no iOS e melhora touch */
+        input, textarea { 
+            font-size: 16px !important; 
+            touch-action: manipulation;
+        }
+
+        /* ANTI-CÓPIA E ANTI-PRINT (Mitigação) */
+        body {
+            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none; /* Safari */
+            -khtml-user-select: none; /* Konqueror HTML */
+            -moz-user-select: none; /* Old versions of Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
+        }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 h-[100dvh] overflow-hidden flex items-center justify-center font-sans">
+<body id="app-body" class="bg-gray-900 text-gray-100 overflow-hidden flex items-center justify-center font-sans w-full absolute inset-0">
+
+    <!-- Escudo de Privacidade (Ativado ao sair do foco/multitarefas) -->
+    <div id="privacy-shield" class="fixed inset-0 bg-black z-[99999] flex flex-col items-center justify-center transition-opacity duration-100 opacity-0 pointer-events-none">
+        <i class="fas fa-eye-slash text-5xl text-gray-700 mb-4"></i>
+        <p class="text-gray-500 text-sm font-medium">Conteúdo Protegido</p>
+    </div>
 
     <!-- Tela de Login Disfarçada (Estilo Gov/Corporate Escuro) -->
     <div id="login-screen" class="w-full h-full sm:h-auto sm:max-w-sm sm:p-8 sm:rounded-xl sm:border border-gray-800 bg-gray-900 sm:bg-[#111827] flex flex-col justify-center px-6 relative z-10 transition-all duration-300">
         
-        <!-- Detalhe visual (Fita superior simulando identidade visual oficial) -->
         <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#00A859] via-[#FFCC29] to-[#005B9F] sm:rounded-t-xl"></div>
 
         <div id="login-form-container" class="w-full">
@@ -53,7 +72,6 @@
             </div>
         </div>
 
-        <!-- Tela de Carregamento Transparente (Usada no Auto-login do F5) -->
         <div id="login-loading" class="hidden w-full flex flex-col items-center justify-center">
             <i class="fas fa-circle-notch fa-spin text-3xl text-[#005B9F] mb-4"></i>
             <p class="text-gray-400 text-sm">Autenticando sessão...</p>
@@ -61,10 +79,10 @@
     </div>
 
     <!-- Interface Principal do Chat -->
-    <div id="chat-screen" class="hidden w-full h-[100dvh] flex flex-col relative bg-gray-900">
+    <div id="chat-screen" class="hidden w-full flex flex-col relative bg-gray-900 absolute inset-0">
         
         <!-- Header Minimalista -->
-        <header class="bg-gray-800 border-b border-gray-700 px-3 py-2.5 flex justify-between items-center z-10 shrink-0">
+        <header class="bg-gray-800 border-b border-gray-700 px-3 py-2.5 flex justify-between items-center z-10 shrink-0 mt-safe-top">
             <div class="flex items-center gap-2.5">
                 <div class="w-8 h-8 rounded-full bg-[#005B9F]/20 flex items-center justify-center text-[#005B9F]">
                     <i class="fas fa-shield-halved text-sm"></i>
@@ -76,13 +94,18 @@
                     </p>
                 </div>
             </div>
-            <button id="btn-leave" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-red-400 active:bg-gray-700 rounded-full transition-colors">
-                <i class="fas fa-power-off"></i>
-            </button>
+            <div class="flex gap-1">
+                <button id="btn-clear" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-white active:bg-gray-700 rounded-full transition-colors" title="Limpar Tela">
+                    <i class="fas fa-broom"></i>
+                </button>
+                <button id="btn-leave" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-red-400 active:bg-gray-700 rounded-full transition-colors" title="Sair">
+                    <i class="fas fa-power-off"></i>
+                </button>
+            </div>
         </header>
 
-        <!-- Lista de Mensagens (Flex-1 para ocupar o espaço dinamicamente) -->
-        <div id="messages-container" class="flex-1 overflow-y-auto p-3 space-y-3 pb-4">
+        <!-- Lista de Mensagens -->
+        <div id="messages-container" class="flex-1 overflow-y-auto p-3 space-y-3 pb-4 touch-pan-y">
             <div class="text-center text-[10px] text-gray-500 my-2 px-4">
                 <i class="fas fa-lock mb-1"></i><br>
                 Criptografia E2EE ativa.<br>As mensagens não podem ser interceptadas.
@@ -91,9 +114,9 @@
         </div>
 
         <!-- Input Area Fixada na Base -->
-        <div class="bg-gray-800 border-t border-gray-700 p-2 shrink-0 pb-safe">
+        <div id="input-area" class="bg-gray-800 border-t border-gray-700 p-2 shrink-0 pb-safe">
             <form id="message-form" class="flex items-end gap-2">
-                <textarea id="message-input" rows="1" required class="flex-1 bg-gray-700 border border-gray-600 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#005B9F] resize-none max-h-32 min-h-[44px]" placeholder="Mensagem..."></textarea>
+                <textarea id="message-input" rows="1" required class="flex-1 bg-gray-700 border border-gray-600 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#005B9F] resize-none max-h-24 min-h-[44px]" placeholder="Mensagem..."></textarea>
                 
                 <button type="submit" class="bg-[#005B9F] hover:bg-[#004780] active:scale-95 text-white w-[44px] h-[44px] rounded-full flex items-center justify-center shrink-0 transition-transform shadow-md">
                     <i class="fas fa-paper-plane text-sm ml-[-2px]"></i>
@@ -102,7 +125,7 @@
         </div>
     </div>
 
-    <!-- Modal de Alerta Customizado (Mantido para Erros Críticos) -->
+    <!-- Modal de Alerta Customizado -->
     <div id="custom-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4">
         <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 w-full max-w-sm shadow-2xl">
             <h3 id="modal-title" class="text-lg font-bold mb-2 text-white">Atenção</h3>
@@ -113,9 +136,10 @@
         </div>
     </div>
 
-    <!-- Padding para Notch de iPhones -->
+    <!-- SafeArea Paddings (iPhone Notch Support) -->
     <style>
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0.5rem); }
+        .mt-safe-top { margin-top: env(safe-area-inset-top, 0); }
     </style>
 
     <!-- Firebase SDKs -->
@@ -123,6 +147,53 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        // SISTEMA ANTI-PRINT / PRIVACIDADE
+        // ==========================================
+        const shield = document.getElementById('privacy-shield');
+        
+        // Ativa o escudo negro se a janela perder o foco (ex: abrir multitarefas para print)
+        function togglePrivacyShield(show) {
+            if (show) {
+                shield.classList.remove('pointer-events-none', 'opacity-0');
+                shield.classList.add('opacity-100');
+            } else {
+                shield.classList.add('pointer-events-none', 'opacity-0');
+                shield.classList.remove('opacity-100');
+            }
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            togglePrivacyShield(document.hidden);
+        });
+
+        window.addEventListener('blur', () => {
+            // Pequeno delay para evitar flashes indesejados ao clicar em inputs
+            setTimeout(() => { if (!document.hasFocus()) togglePrivacyShield(true); }, 100);
+        });
+
+        window.addEventListener('focus', () => {
+            togglePrivacyShield(false);
+        });
+
+        // ==========================================
+        // CONTROLE DINÂMICO DE VIEWPORT (TECLADO MOBILE)
+        // ==========================================
+        const appBody = document.getElementById('app-body');
+        
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                // Força o container a ter a altura exata da parte visível da tela (descontando o teclado)
+                appBody.style.height = `${window.visualViewport.height}px`;
+                scrollToBottom();
+            });
+            // Initial setup
+            appBody.style.height = `${window.visualViewport.height}px`;
+        } else {
+            // Fallback para navegadores antigos
+            appBody.style.height = '100vh';
+        }
 
         // ==========================================
         // UI & UTILITÁRIOS GERAIS
@@ -139,17 +210,28 @@
 
         function scrollToBottom() {
             const container = document.getElementById('messages-container');
-            container.scrollTop = container.scrollHeight;
+            // Timeout garante que a renderização do DOM ocorreu antes do scroll
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 50);
         }
 
-        // Auto-resize do textarea para melhor UX mobile
+        // Auto-resize do textarea
         const tx = document.getElementById('message-input');
         tx.addEventListener("input", OnInput, false);
+        
         function OnInput() {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
             scrollToBottom();
         }
+
+        // Foco no input ao clicar na área do chat (UX nativa)
+        document.getElementById('messages-container').addEventListener('click', () => {
+            if(document.activeElement === tx) {
+                tx.blur();
+            }
+        });
 
         // ==========================================
         // CONFIGURAÇÃO DO AMBIENTE E FIREBASE
@@ -178,7 +260,6 @@
             isFirebaseInitialized = true;
         }
 
-        // Constantes estritas definidas na regra de negócio
         const REQUIRED_PASSWORD = "9090123";
         const HARDCODED_ROOM_ID = "sala_secreta_9090123";
 
@@ -190,28 +271,22 @@
             username: '',
             roomId: HARDCODED_ROOM_ID,
             cryptoKey: null,
-            messagesUnsubscribe: null
+            messagesUnsubscribe: null,
+            localClearTimestamp: parseInt(sessionStorage.getItem('gov_br_clear_time') || '0')
         };
 
         // ==========================================
-        // MOTOR CRIPTOGRÁFICO (E2EE Web Crypto API)
+        // MOTOR CRIPTOGRÁFICO (E2EE)
         // ==========================================
         async function deriveKey(password, saltString) {
             const enc = new TextEncoder();
             const keyMaterial = await crypto.subtle.importKey(
-                "raw",
-                enc.encode(password),
-                { name: "PBKDF2" },
-                false,
-                ["deriveBits", "deriveKey"]
+                "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveBits", "deriveKey"]
             );
             const salt = enc.encode(saltString);
             return crypto.subtle.deriveKey(
                 { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
-                keyMaterial,
-                { name: "AES-GCM", length: 256 },
-                true,
-                ["encrypt", "decrypt"]
+                keyMaterial, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]
             );
         }
 
@@ -219,9 +294,7 @@
             const enc = new TextEncoder();
             const iv = crypto.getRandomValues(new Uint8Array(12));
             const encodedData = enc.encode(dataString);
-            const ciphertext = await crypto.subtle.encrypt(
-                { name: "AES-GCM", iv: iv }, key, encodedData
-            );
+            const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, encodedData);
             return {
                 ciphertext: arrayBufferToBase64(ciphertext),
                 iv: arrayBufferToBase64(iv)
@@ -232,9 +305,7 @@
             try {
                 const ciphertext = base64ToArrayBuffer(ciphertextBase64);
                 const iv = base64ToArrayBuffer(ivBase64);
-                const decryptedData = await crypto.subtle.decrypt(
-                    { name: "AES-GCM", iv: iv }, key, ciphertext
-                );
+                const decryptedData = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, ciphertext);
                 const dec = new TextDecoder();
                 return dec.decode(decryptedData);
             } catch (error) {
@@ -245,9 +316,7 @@
         function arrayBufferToBase64(buffer) {
             let binary = '';
             const bytes = new Uint8Array(buffer);
-            for (let i = 0; i < bytes.byteLength; i++) {
-                binary += String.fromCharCode(bytes[i]);
-            }
+            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
             return window.btoa(binary);
         }
 
@@ -255,14 +324,12 @@
             const binary_string = window.atob(base64);
             const len = binary_string.length;
             const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binary_string.charCodeAt(i);
-            }
+            for (let i = 0; i < len; i++) bytes[i] = binary_string.charCodeAt(i);
             return bytes.buffer;
         }
 
         // ==========================================
-        // ROTINA DE LOGIN PRINCIPAL E AUTO-LOGIN (F5)
+        // ROTINA DE LOGIN PRINCIPAL E AUTO-LOGIN
         // ==========================================
         async function performLoginProcess(passwordInput, isAutoLogin = false) {
             const btn = document.getElementById('join-btn');
@@ -270,7 +337,7 @@
 
             if (passwordInput !== REQUIRED_PASSWORD) {
                 if (isAutoLogin) {
-                    sessionStorage.removeItem('gov_br_secure_session'); // Limpa cache inválido
+                    sessionStorage.removeItem('gov_br_secure_session');
                     document.getElementById('login-loading').classList.add('hidden');
                     document.getElementById('login-form-container').classList.remove('hidden');
                     return;
@@ -296,15 +363,12 @@
             }
 
             try {
-                // Deriva chave e salva sessão (Proteção F5)
                 state.cryptoKey = await deriveKey(passwordInput, state.roomId);
                 sessionStorage.setItem('gov_br_secure_session', passwordInput);
                 
-                // Gera identidade baseada no UID do Firebase para persistência visual
                 const shortUid = state.user.uid.substring(0, 4);
                 state.username = `Protocolo-${shortUid}`;
 
-                // Transição de UI
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('chat-screen').classList.remove('hidden');
                 document.getElementById('user-identity').textContent = state.username;
@@ -323,7 +387,7 @@
         }
 
         // ==========================================
-        // AUTENTICAÇÃO E INICIALIZAÇÃO FIREBASE
+        // FIREBASE AUTH
         // ==========================================
         let hasTriggeredAutoLogin = false;
 
@@ -342,7 +406,6 @@
         }
 
         if (isFirebaseInitialized) {
-            // Verifica se tem sessão cacheada no F5 para trocar a UI imediatamente
             const cachedSession = sessionStorage.getItem('gov_br_secure_session');
             if (cachedSession) {
                 document.getElementById('login-form-container').classList.add('hidden');
@@ -351,13 +414,10 @@
 
             onAuthStateChanged(auth, async (user) => {
                 state.user = user;
-                
-                // Se o usuário conectou e temos uma sessão salva, executa o login invisível
                 if (user && cachedSession && !hasTriggeredAutoLogin) {
                     hasTriggeredAutoLogin = true;
                     await performLoginProcess(cachedSession, true);
                 } else if (!user && cachedSession) {
-                    // Se o firebase desconectou forçado, volta pro login
                     sessionStorage.removeItem('gov_br_secure_session');
                     document.getElementById('login-loading').classList.add('hidden');
                     document.getElementById('login-form-container').classList.remove('hidden');
@@ -377,7 +437,7 @@
         });
 
         // ==========================================
-        // LÓGICA DO CHAT (ENVIO E RECEBIMENTO)
+        // LÓGICA DO CHAT & RENDERIZAÇÃO
         // ==========================================
         function getChatCollectionPath() {
             return collection(db, `messages_channel_${state.roomId}`);
@@ -406,9 +466,16 @@
                     return timeA - timeB;
                 });
 
+                // Renderiza header do chat
                 container.innerHTML = `<div class="text-center text-[10px] text-gray-500 my-2 px-4"><i class="fas fa-lock mb-1"></i><br>Criptografia E2EE ativa.<br>As mensagens não podem ser interceptadas.</div>`;
 
+                // Renderiza apenas mensagens POSTERIORES ao clearTimestamp local
+                let renderedCount = 0;
                 for (const msgData of docsData) {
+                    const msgTime = msgData.timestamp ? msgData.timestamp.toMillis() : Date.now();
+                    
+                    if (msgTime < state.localClearTimestamp) continue;
+
                     if (!msgData.ciphertext || !msgData.iv) continue;
 
                     const decryptedPayloadStr = await decryptData(msgData.ciphertext, msgData.iv, state.cryptoKey);
@@ -416,10 +483,19 @@
                     try {
                         const payload = JSON.parse(decryptedPayloadStr);
                         renderMessage(msgData.id, payload.content, msgData.senderId === state.user.uid, msgData.senderName, msgData.hasPendingWrites);
+                        renderedCount++;
                     } catch (e) {
                         renderMessage(msgData.id, '[Corrompido]', msgData.senderId === state.user.uid, msgData.senderName, false);
                     }
                 }
+
+                if (renderedCount === 0 && state.localClearTimestamp > 0) {
+                     const div = document.createElement('div');
+                     div.className = "text-center text-[10px] text-gray-500 my-4";
+                     div.innerHTML = "<i class='fas fa-broom mb-1'></i><br>Tela limpa.";
+                     container.appendChild(div);
+                }
+
                 scrollToBottom();
 
             }, (error) => {
@@ -442,18 +518,16 @@
             wrapper.appendChild(nameDiv);
 
             const bubble = document.createElement('div');
-            // Design mais limpo e compacto para responsividade
             bubble.className = `max-w-[88%] rounded-2xl px-3 py-2 shadow-sm relative ${isMine ? 'bg-[#005B9F] text-white rounded-tr-[4px]' : 'bg-gray-800 border border-gray-700 text-gray-100 rounded-tl-[4px]'}`;
             
             const contentDiv = document.createElement('div');
             contentDiv.className = "flex flex-wrap items-end justify-end gap-1.5";
             
             const p = document.createElement('p');
-            p.className = "break-words whitespace-pre-wrap flex-1 text-[14px] leading-snug";
+            p.className = "break-words whitespace-pre-wrap flex-1 text-[14px] leading-snug font-sans";
             p.textContent = textContent;
             contentDiv.appendChild(p);
 
-            // Ícones de status compactos
             if (isMine) {
                 const statusIcon = document.createElement('i');
                 statusIcon.className = hasPendingWrites 
@@ -467,6 +541,9 @@
             container.appendChild(wrapper);
         }
 
+        // ==========================================
+        // EVENTOS DE AÇÃO (Enviar, Limpar, Sair)
+        // ==========================================
         async function sendMessage(textContent) {
             if (!state.user || !isFirebaseInitialized) return;
             
@@ -494,29 +571,37 @@
             
             if (text) {
                 await sendMessage(text);
+                input.value = '';
+                input.style.height = 'auto'; // Reseta textarea
+                input.focus(); // Mantém teclado aberto na web nativa
             }
-            
-            input.value = '';
-            input.style.height = 'auto'; // Reseta altura do textarea
-            input.focus();
         });
 
-        // ==========================================
-        // SAIR E DESTRUIR SESSÃO
-        // ==========================================
+        // Limpar Tela Local
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            state.localClearTimestamp = Date.now();
+            sessionStorage.setItem('gov_br_clear_time', state.localClearTimestamp.toString());
+            
+            // Força a re-renderização disparando o último snapshot salvo na memória (simulação)
+            // Como estamos no listener real time, a forma mais segura é zerar o DOM manualmente aqui.
+            // O startChatListener vai ignorar as antigas em atualizações futuras.
+            const container = document.getElementById('messages-container');
+            container.innerHTML = `<div class="text-center text-[10px] text-gray-500 my-4"><i class="fas fa-broom mb-1"></i><br>Tela limpa localmente.</div>`;
+        });
+
         document.getElementById('btn-leave').addEventListener('click', () => {
             state.cryptoKey = null;
             hasTriggeredAutoLogin = false;
             
-            // Destrói cache de F5
             sessionStorage.removeItem('gov_br_secure_session');
+            sessionStorage.removeItem('gov_br_clear_time');
+            state.localClearTimestamp = 0;
             
             if (state.messagesUnsubscribe) state.messagesUnsubscribe();
 
             document.getElementById('messages-container').innerHTML = '';
             document.getElementById('chat-screen').classList.add('hidden');
             
-            // Retorna UI do login
             document.getElementById('login-loading').classList.add('hidden');
             document.getElementById('login-form-container').classList.remove('hidden');
             document.getElementById('login-screen').classList.remove('hidden');
