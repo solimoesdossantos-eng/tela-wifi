@@ -1,132 +1,563 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro Mic Stream - Background Mode</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WebRTC Chamada 1-para-1 PRO (Sem Banco de Dados)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #0f0f0f;
-            color: #e0e0e0;
-        }
-        .container {
-            text-align: center;
-            padding: 20px;
-            border-radius: 15px;
-            background: #1a1a1a;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        #status-light {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #444;
-            display: inline-block;
-            margin-right: 10px;
-        }
-        .active { background: #ff0000 !important; box-shadow: 0 0 10px #ff0000; }
-        button {
-            padding: 15px 40px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-            border-radius: 50px;
-            background: linear-gradient(145deg, #007bff, #0056b3);
-            color: white;
-            transition: transform 0.2s;
-        }
-        button:active { transform: scale(0.95); }
-        #log { font-size: 0.8rem; color: #888; margin-top: 20px; max-width: 250px; }
+        body { background-color: #111827; color: #f3f4f6; font-family: sans-serif; }
+        .video-container { position: relative; width: 100%; padding-top: 133%; background: #1f2937; border-radius: 0.5rem; overflow: hidden; border: 2px solid #374151; }
+        .video-container video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+        .video-container video.screen-share { object-fit: contain; background: #111; }
+        .video-label { position: absolute; bottom: 0.5rem; left: 0.5rem; background: rgba(0,0,0,0.6); color: white; padding: 0.1rem 0.5rem; border-radius: 0.25rem; font-size: 0.7rem; font-weight: bold; z-index: 10; }
+        .hidden { display: none !important; }
+        input { text-transform: uppercase; }
+        /* Estado de mute visual */
+        .muted-visual { opacity: 0.5; filter: grayscale(100%); }
     </style>
 </head>
-<body>
+<body class="min-h-screen flex flex-col items-center p-4">
 
-    <div class="container">
-        <h1>Background Mic</h1>
-        <div style="margin-bottom: 20px;">
-            <span id="status-light"></span>
-            <span id="status-text">Status: Offline</span>
+    <!-- Header -->
+    <header class="w-full max-w-4xl text-center mb-6">
+        <h1 class="text-2xl font-bold text-blue-400">Chamada Direta PRO (1-para-1)</h1>
+        <p class="text-xs text-gray-400 mt-1" id="status-text">Sistema P2P Stateless. Nenhuma base de dados utilizada.</p>
+    </header>
+
+    <!-- Seleção de Papel (Role) -->
+    <main id="role-selection" class="w-full max-w-sm bg-gray-800 p-6 rounded-lg shadow-lg text-center flex flex-col gap-4">
+        <button id="btn-role-host" class="bg-blue-600 hover:bg-blue-700 font-bold py-3 px-4 rounded transition-colors">
+            🎥 Criar Chamada (Gerar PIN)
+        </button>
+        <button id="btn-role-join" class="bg-green-600 hover:bg-green-700 font-bold py-3 px-4 rounded transition-colors">
+            👀 Entrar na Chamada (Usar PIN)
+        </button>
+    </main>
+
+    <!-- UI da Sala (1-para-1) -->
+    <section id="room-ui" class="w-full max-w-4xl hidden flex-col gap-4">
+        
+        <!-- Controles Superiores -->
+        <div class="bg-gray-800 p-4 rounded-lg shadow flex flex-col md:flex-row justify-between items-start gap-4">
+            
+            <!-- Bloco do PIN e Inputs -->
+            <div class="flex-1 w-full flex flex-col gap-2 border-b md:border-b-0 md:border-r border-gray-700 pb-4 md:pb-0 md:pr-4">
+                
+                <div id="pin-display-block" class="text-center md:text-left">
+                    <span class="text-sm text-gray-400 block mb-1">Seu PIN (Envie para a outra pessoa):</span>
+                    <div class="text-3xl font-mono font-bold tracking-widest text-yellow-400" id="pin-display">
+                        ------
+                    </div>
+                </div>
+
+                <div id="pin-input-block" class="w-full flex flex-col sm:flex-row gap-2 hidden">
+                    <input type="text" id="viewer-pin-input" maxlength="6" class="flex-1 bg-gray-900 text-white text-xl font-mono text-center tracking-widest p-2 rounded border border-gray-600 focus:outline-none focus:border-green-500 placeholder-gray-700" placeholder="DIGITE O PIN">
+                    <button id="btn-connect-room" class="bg-green-600 hover:bg-green-700 font-bold py-2 px-6 rounded transition-colors">Conectar</button>
+                </div>
+            </div>
+
+            <!-- Controles de Setup de Hardware (Qualidade e Lente) -->
+            <div class="flex flex-col gap-2 w-full md:w-auto">
+                <span class="text-xs text-gray-400 uppercase font-bold">Dispositivos</span>
+                <select id="camera-select" class="bg-gray-700 text-white text-sm rounded p-2 border border-gray-600 w-full focus:outline-none focus:border-blue-500">
+                    <option value="">Carregando câmeras...</option>
+                </select>
+                <select id="quality-select" class="bg-gray-700 text-white text-sm rounded p-2 border border-gray-600 w-full focus:outline-none focus:border-blue-500">
+                    <option value="hd">Qualidade: HD (720p - Ideal para Wi-Fi)</option>
+                    <option value="sd">Qualidade: SD (480p - Ideal para Móvel/4G)</option>
+                </select>
+            </div>
         </div>
-        <button id="initBtn">INICIAR MONITORAMENTO</button>
-        <div id="log">Aperte o botão e não feche a aba. Funciona melhor com fones.</div>
-    </div>
 
-    <audio id="silentAudio" loop>
-        <source src="https://raw.githubusercontent.com/anars/blank-audio/master/250-milliseconds-of-silence.mp3" type="audio/mp3">
-    </audio>
+        <!-- Controles em Tempo Real (Ações durante a chamada) -->
+        <div class="bg-gray-900 p-3 rounded-lg shadow flex flex-wrap justify-center items-center gap-2 border border-gray-700">
+            <button id="btn-toggle-mic" class="bg-gray-700 hover:bg-gray-600 text-white text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2">
+                🎤 Mic On
+            </button>
+            <button id="btn-toggle-video" class="bg-gray-700 hover:bg-gray-600 text-white text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2">
+                📹 Cam On
+            </button>
+            <button id="btn-share-screen" class="bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2">
+                🖥️ Tela
+            </button>
+            <button id="btn-toggle-wake" class="bg-yellow-600 hover:bg-yellow-700 text-white text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2">
+                <span id="wake-icon">🔓</span> Tela Fixa
+            </button>
+        </div>
+
+        <p class="text-[0.65rem] text-center text-gray-500 uppercase tracking-wider">O compartilhamento de tela funciona nativamente apenas em Desktops/Notebooks.</p>
+
+        <!-- GRID DE VÍDEOS -->
+        <div id="video-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+            
+            <!-- Slot Local -->
+            <div class="video-container border-blue-500 border-2 shadow-[0_0_10px_rgba(59,130,246,0.5)]">
+                <video id="local-video" autoplay playsinline muted></video>
+                <div class="video-label">Você</div>
+            </div>
+            
+            <!-- Slot Remoto -->
+            <div class="video-container border-green-500 border-2 shadow-[0_0_10px_rgba(34,197,94,0.3)] hidden" id="wrapper-remote">
+                <video id="remote-video" autoplay playsinline></video>
+                <div class="video-label" id="remote-label">Aguardando Conexão...</div>
+            </div>
+
+        </div>
+
+    </section>
 
     <script>
-        const initBtn = document.getElementById('initBtn');
-        const statusLight = document.getElementById('status-light');
-        const statusText = document.getElementById('status-text');
-        const silentAudio = document.getElementById('silentAudio');
+        // ==========================================
+        // Configuração de Infraestrutura (STUN/TURN)
+        // OBS: Servidores STUN não são banco de dados. Eles apenas refletem o IP público.
+        // ==========================================
+        const webrtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ],
+            iceTransportPolicy: 'all'
+        };
 
+        // ==========================================
+        // Estado Global e Variáveis
+        // ==========================================
+        let peer = null;
+        let localStream = null;
+        let screenStream = null;
+        let activeCall = null;
         let wakeLock = null;
+        
+        let isHost = false;
+        let isScreenSharing = false;
+        let isMicMuted = false;
+        let isVideoMuted = false;
 
-        // Função para impedir que a tela apague (se suportado)
-        const requestWakeLock = async () => {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    console.log('Wake Lock ativo');
-                }
-            } catch (err) {
-                console.error(`${err.name}, ${err.message}`);
+        // Elementos DOM
+        const statusText = document.getElementById('status-text');
+        const roleSelection = document.getElementById('role-selection');
+        const roomUi = document.getElementById('room-ui');
+        
+        const pinDisplayBlock = document.getElementById('pin-display-block');
+        const pinDisplay = document.getElementById('pin-display');
+        
+        const pinInputBlock = document.getElementById('pin-input-block');
+        const viewerPinInput = document.getElementById('viewer-pin-input');
+        const btnConnectRoom = document.getElementById('btn-connect-room');
+        
+        const cameraSelect = document.getElementById('camera-select');
+        const qualitySelect = document.getElementById('quality-select');
+        
+        const btnToggleMic = document.getElementById('btn-toggle-mic');
+        const btnToggleVideo = document.getElementById('btn-toggle-video');
+        const btnShareScreen = document.getElementById('btn-share-screen');
+        const btnToggleWake = document.getElementById('btn-toggle-wake');
+        const wakeIcon = document.getElementById('wake-icon');
+        
+        const localVideo = document.getElementById('local-video');
+        const remoteVideo = document.getElementById('remote-video');
+        const wrapperRemote = document.getElementById('wrapper-remote');
+        const remoteLabel = document.getElementById('remote-label');
+
+        // ==========================================
+        // Utilitários Puros
+        // ==========================================
+        function generatePIN() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
+            let result = '';
+            for (let i = 0; i < 6; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
             }
-        };
+            return result;
+        }
 
-        initBtn.onclick = async () => {
+        function updateStatus(text, type = 'info') {
+            statusText.innerHTML = text;
+            if (type === 'error') statusText.className = "text-xs mt-1 text-red-500 font-bold";
+            else if (type === 'success') statusText.className = "text-xs mt-1 text-green-400 font-bold";
+            else statusText.className = "text-xs mt-1 text-gray-400";
+        }
+
+        // ==========================================
+        // Lógica de Renderização de Mídia (1-para-1)
+        // ==========================================
+        function setupRemoteStream(stream) {
+            remoteVideo.srcObject = stream;
+            wrapperRemote.classList.remove('hidden');
+            remoteLabel.innerText = "Parceiro Conectado";
+            updateStatus("Conexão P2P estabelecida com sucesso!", 'success');
+        }
+
+        function clearRemoteStream() {
+            remoteVideo.srcObject = null;
+            wrapperRemote.classList.add('hidden');
+            remoteLabel.innerText = "Aguardando...";
+            updateStatus("O parceiro desconectou da chamada.", 'error');
+        }
+
+        // ==========================================
+        // Captura de Câmera e Restrições de Qualidade
+        // ==========================================
+        async function getCameras() {
             try {
-                // 1. Solicita Microfone
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: {
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false
-                    } 
-                });
-
-                // 2. Inicia áudio silencioso para "enganar" o sistema operacional
-                await silentAudio.play();
-
-                // 3. Configura o AudioContext
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const source = audioContext.createMediaStreamSource(stream);
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
                 
-                // Conecta o microfone à saída (Speaker) 
-                // Se o objetivo for gravar ou enviar para servidor, a lógica entra aqui
-                source.connect(audioContext.destination);
-
-                // 4. Solicita Wake Lock
-                await requestWakeLock();
-
-                // Interface
-                statusLight.classList.add('active');
-                statusText.innerText = "Status: MONITORANDO";
-                initBtn.style.display = 'none';
-
-                console.log("Sistema rodando em background...");
-
-            } catch (err) {
-                alert("Erro: Certifique-se de usar HTTPS e dar permissão ao microfone.");
-                console.error(err);
+                cameraSelect.innerHTML = '';
+                videoDevices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `Câmera ${cameraSelect.length + 1}`;
+                    cameraSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Erro ao listar câmeras:", error);
             }
-        };
+        }
 
-        // Reativar Wake Lock se o app voltar de um estado minimizado
-        document.addEventListener('visibilitychange', async () => {
-            if (wakeLock !== null && document.visibilityState === 'visible') {
-                await requestWakeLock();
+        function getMediaConstraints(deviceId, quality) {
+            let videoConstraints = {
+                facingMode: "user",
+                frameRate: { ideal: 30, max: 30 }
+            };
+
+            if (deviceId) {
+                videoConstraints.deviceId = { exact: deviceId };
+                delete videoConstraints.facingMode;
+            }
+
+            // Definição estrita de banda para mobile
+            if (quality === 'hd') {
+                videoConstraints.width = { ideal: 1280, max: 1280 };
+                videoConstraints.height = { ideal: 720, max: 720 };
+            } else { // sd
+                videoConstraints.width = { ideal: 640, max: 640 };
+                videoConstraints.height = { ideal: 480, max: 480 };
+            }
+
+            return { video: videoConstraints, audio: true };
+        }
+
+        async function openCamera() {
+            const deviceId = cameraSelect.value || null;
+            const quality = qualitySelect.value;
+            const constraints = getMediaConstraints(deviceId, quality);
+
+            try {
+                if (isScreenSharing) stopScreenShare();
+
+                if (localStream) {
+                    localStream.getTracks().forEach(track => track.stop());
+                }
+                
+                localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                // Restaura o estado atual de Mute (se o usuário trocar a câmera com mic mutado)
+                localStream.getAudioTracks().forEach(track => track.enabled = !isMicMuted);
+                localStream.getVideoTracks().forEach(track => track.enabled = !isVideoMuted);
+                
+                if (isVideoMuted) localVideo.classList.add('muted-visual');
+                else localVideo.classList.remove('muted-visual');
+
+                localVideo.srcObject = localStream;
+                localVideo.classList.remove('screen-share');
+                
+                // Atualiza a track na conexão remota sem derrubar a chamada
+                if (activeCall && activeCall.peerConnection) {
+                    const videoSender = activeCall.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+                    const audioSender = activeCall.peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
+                    
+                    if (videoSender && localStream.getVideoTracks()[0]) {
+                        videoSender.replaceTrack(localStream.getVideoTracks()[0]);
+                    }
+                    if (audioSender && localStream.getAudioTracks()[0]) {
+                        audioSender.replaceTrack(localStream.getAudioTracks()[0]);
+                    }
+                }
+                return true;
+            } catch (error) {
+                updateStatus("Erro: Permissão de câmera negada ou resolução não suportada.", 'error');
+                console.error(error);
+                return false;
+            }
+        }
+
+        cameraSelect.addEventListener('change', async () => {
+            updateStatus("Trocando lente da câmera...");
+            await openCamera();
+        });
+
+        qualitySelect.addEventListener('change', async () => {
+            updateStatus("Ajustando resolução/banda da câmera...");
+            await openCamera();
+        });
+
+        // ==========================================
+        // Controles de Mídia Ativos (Mute / Unmute)
+        // ==========================================
+        btnToggleMic.addEventListener('click', () => {
+            if (!localStream) return;
+            isMicMuted = !isMicMuted;
+            
+            // Atua em todas as trilhas de áudio enviadas
+            localStream.getAudioTracks().forEach(track => track.enabled = !isMicMuted);
+            
+            if (isMicMuted) {
+                btnToggleMic.innerHTML = "🔇 Mic Off";
+                btnToggleMic.classList.replace('bg-gray-700', 'bg-red-900');
+            } else {
+                btnToggleMic.innerHTML = "🎤 Mic On";
+                btnToggleMic.classList.replace('bg-red-900', 'bg-gray-700');
             }
         });
+
+        btnToggleVideo.addEventListener('click', () => {
+            if (!localStream || isScreenSharing) return; // Não mutar vídeo se tiver compartilhando tela
+            isVideoMuted = !isVideoMuted;
+            
+            // Atua em todas as trilhas de vídeo enviadas (gera frame preto/pausado do outro lado)
+            localStream.getVideoTracks().forEach(track => track.enabled = !isVideoMuted);
+            
+            if (isVideoMuted) {
+                btnToggleVideo.innerHTML = "🚫 Cam Off";
+                btnToggleVideo.classList.replace('bg-gray-700', 'bg-red-900');
+                localVideo.classList.add('muted-visual');
+            } else {
+                btnToggleVideo.innerHTML = "📹 Cam On";
+                btnToggleVideo.classList.replace('bg-red-900', 'bg-gray-700');
+                localVideo.classList.remove('muted-visual');
+            }
+        });
+
+        // ==========================================
+        // Captura de Tela (Screen Share)
+        // ==========================================
+        async function startScreenShare() {
+            try {
+                if (!navigator.mediaDevices.getDisplayMedia) {
+                    throw new Error("API bloqueada neste dispositivo (Mobiles não suportam).");
+                }
+
+                screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+                const screenTrack = screenStream.getVideoTracks()[0];
+                
+                screenTrack.onended = () => stopScreenShare();
+
+                localVideo.srcObject = screenStream;
+                localVideo.classList.add('screen-share');
+                localVideo.classList.remove('muted-visual'); // Força visualização
+                
+                if (activeCall && activeCall.peerConnection) {
+                    const sender = activeCall.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+                    if (sender && screenTrack) {
+                        sender.replaceTrack(screenTrack);
+                    }
+                }
+
+                isScreenSharing = true;
+                btnShareScreen.classList.replace('bg-purple-600', 'bg-red-600');
+                btnShareScreen.classList.replace('hover:bg-purple-700', 'hover:bg-red-700');
+                btnShareScreen.innerHTML = "❌ Parar Tela";
+                
+                // Desabilita botão de mutar vídeo da câmera durante o share
+                btnToggleVideo.disabled = true;
+                btnToggleVideo.classList.add('opacity-50', 'cursor-not-allowed');
+
+                updateStatus("Transmitindo tela.", 'success');
+            } catch (error) {
+                console.error("Erro no Screen Share:", error);
+                alert(`Compartilhamento falhou: ${error.message}`);
+                stopScreenShare();
+            }
+        }
+
+        async function stopScreenShare() {
+            if (!isScreenSharing) return;
+            
+            if (screenStream) {
+                screenStream.getTracks().forEach(track => track.stop());
+                screenStream = null;
+            }
+
+            isScreenSharing = false;
+            btnShareScreen.classList.replace('bg-red-600', 'bg-purple-600');
+            btnShareScreen.classList.replace('hover:bg-red-700', 'hover:bg-purple-700');
+            btnShareScreen.innerHTML = "🖥️ Tela";
+            
+            btnToggleVideo.disabled = false;
+            btnToggleVideo.classList.remove('opacity-50', 'cursor-not-allowed');
+
+            updateStatus("Retornando para a câmera...");
+            await openCamera();
+            updateStatus("Câmera restaurada.");
+        }
+
+        btnShareScreen.addEventListener('click', () => {
+            if (isScreenSharing) stopScreenShare();
+            else startScreenShare();
+        });
+
+        // ==========================================
+        // Lógica: Screen Wake Lock
+        // ==========================================
+        async function toggleWakeLock() {
+            if (!('wakeLock' in navigator)) {
+                alert("Wake Lock API bloqueada no sistema.");
+                return;
+            }
+            try {
+                if (wakeLock !== null) {
+                    await wakeLock.release();
+                    wakeLock = null;
+                    btnToggleWake.classList.replace('bg-green-600', 'bg-yellow-600');
+                    wakeIcon.innerText = '🔓';
+                } else {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    btnToggleWake.classList.replace('bg-yellow-600', 'bg-green-600');
+                    wakeIcon.innerText = '🔒';
+                }
+            } catch (err) {
+                console.error(`Erro Wake Lock: ${err.message}`);
+            }
+        }
+        btnToggleWake.addEventListener('click', toggleWakeLock);
+
+        // ==========================================
+        // Configuração Comum da Chamada P2P
+        // ==========================================
+        function setupCallListeners(call) {
+            activeCall = call;
+
+            call.on('stream', (remoteStream) => {
+                setupRemoteStream(remoteStream);
+            });
+
+            call.on('close', () => {
+                clearRemoteStream();
+                activeCall = null;
+            });
+            
+            call.on('error', (err) => {
+                console.error("Erro na chamada WebRTC:", err);
+                clearRemoteStream();
+                activeCall = null;
+            });
+        }
+
+        function initPeer(id = null) {
+            // Injeção da configuração de infraestrutura
+            const options = {
+                debug: 2,
+                config: webrtcConfig
+            };
+            return id ? new Peer(id, options) : new Peer(options);
+        }
+
+        // ==========================================
+        // Fluxo 1 (Host - Quem gera o PIN)
+        // ==========================================
+        document.getElementById('btn-role-host').addEventListener('click', async () => {
+            isHost = true;
+            roleSelection.classList.add('hidden');
+            roomUi.classList.remove('hidden');
+            roomUi.classList.add('flex');
+            
+            wrapperRemote.classList.remove('hidden');
+            remoteLabel.innerText = "Aguardando alguém entrar...";
+
+            const cameraOpened = await openCamera();
+            if (!cameraOpened) return;
+            await getCameras();
+
+            const pin = generatePIN();
+            pinDisplay.innerText = pin;
+            const peerId = `p2p-1to1-pro-${pin}`; 
+
+            updateStatus("Conectando roteador de sinalização (RAM)...");
+            peer = initPeer(peerId);
+
+            peer.on('open', (id) => {
+                updateStatus("Pronto! Envie o PIN e aguarde a conexão nativa.", 'success');
+            });
+
+            peer.on('call', (call) => {
+                const streamToSend = isScreenSharing ? screenStream : localStream;
+                call.answer(streamToSend);
+                setupCallListeners(call);
+            });
+
+            peer.on('error', (err) => {
+                console.error("PeerJS Erro Sinalização:", err);
+                updateStatus(`Erro na Sinalização: ${err.type}`, 'error');
+            });
+
+            if (wakeLock === null) toggleWakeLock();
+        });
+
+        // ==========================================
+        // Fluxo 2 (Viewer - Quem digita o PIN)
+        // ==========================================
+        document.getElementById('btn-role-join').addEventListener('click', async () => {
+            isHost = false;
+            roleSelection.classList.add('hidden');
+            roomUi.classList.remove('hidden');
+            roomUi.classList.add('flex');
+            
+            pinDisplayBlock.classList.add('hidden');
+            pinInputBlock.classList.remove('hidden');
+            
+            wrapperRemote.classList.remove('hidden');
+
+            const cameraOpened = await openCamera();
+            if (!cameraOpened) return;
+            await getCameras();
+
+            peer = initPeer();
+            
+            peer.on('open', (id) => {
+                updateStatus("Pronto. Digite o PIN para ligar para o host.");
+            });
+
+            peer.on('call', (call) => {
+                const streamToSend = isScreenSharing ? screenStream : localStream;
+                call.answer(streamToSend);
+                setupCallListeners(call);
+            });
+
+            peer.on('error', (err) => {
+                console.error("PeerJS Erro:", err);
+                updateStatus(`Sinalização Falhou. Verifique rede ou PIN.`, 'error');
+                btnConnectRoom.disabled = false;
+                btnConnectRoom.innerText = 'Conectar';
+            });
+        });
+
+        btnConnectRoom.addEventListener('click', () => {
+            const rawPin = viewerPinInput.value.trim().toUpperCase();
+            if (rawPin.length !== 6) {
+                alert("O PIN deve conter exatamente 6 caracteres alfanuméricos.");
+                return;
+            }
+
+            btnConnectRoom.disabled = true;
+            btnConnectRoom.innerText = 'Chamando...';
+            updateStatus("Negociando rotas ICE...");
+
+            const targetPeerId = `p2p-1to1-pro-${rawPin}`;
+
+            const streamToSend = isScreenSharing ? screenStream : localStream;
+            const call = peer.call(targetPeerId, streamToSend);
+            
+            setupCallListeners(call);
+        });
+
+        viewerPinInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^A-Z0-9]/ig, '').toUpperCase();
+        });
+
     </script>
 </body>
 </html>
+
