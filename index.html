@@ -2,562 +2,1051 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WebRTC Chamada 1-para-1 PRO (Sem Banco de Dados)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>PDV Automação - Offline First</title>
+    
+    <!-- Dependências externas -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
     <style>
-        body { background-color: #111827; color: #f3f4f6; font-family: sans-serif; }
-        .video-container { position: relative; width: 100%; padding-top: 133%; background: #1f2937; border-radius: 0.5rem; overflow: hidden; border: 2px solid #374151; }
-        .video-container video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
-        .video-container video.screen-share { object-fit: contain; background: #111; }
-        .video-label { position: absolute; bottom: 0.5rem; left: 0.5rem; background: rgba(0,0,0,0.6); color: white; padding: 0.1rem 0.5rem; border-radius: 0.25rem; font-size: 0.7rem; font-weight: bold; z-index: 10; }
-        .hidden { display: none !important; }
-        input { text-transform: uppercase; }
-        /* Estado de mute visual */
-        .muted-visual { opacity: 0.5; filter: grayscale(100%); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* CORREÇÃO APLICADA AQUI: !important impede que o Tailwind force a exibição antes do Vue carregar */
+        [v-cloak] { display: none !important; }
+        
+        .native-feel { 
+            -webkit-tap-highlight-color: transparent; 
+            user-select: none; 
+            overscroll-behavior-y: contain; 
+        }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        .slide-up-enter-active, .slide-up-leave-active { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .slide-up-enter-from, .slide-up-leave-to { transform: translateY(100%); }
+        body { font-family: Roboto, ui-sans-serif, system-ui, -apple-system, Arial, sans-serif; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        /* Estilos de Impressão */
+        .cupom-termico { font-family: 'Courier New', Courier, monospace; color: black; font-size: 13px; line-height: 1.4; width: 80mm; margin: 0 auto; padding: 5mm; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .cupom-divider { border-top: 1px dashed #000; margin: 8px 0; }
+        .cupom-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 12px; }
+        .cupom-table th, .cupom-table td { padding: 2px 0; text-align: left; vertical-align: top; }
+        .cupom-table .right { text-align: right; }
+        .cupom-table .center { text-align: center; }
+        .documento-juridico { font-family: 'Times New Roman', Times, serif; color: black; font-size: 11pt; line-height: 1.6; width: 210mm; min-height: 297mm; margin: 2rem auto; padding: 20mm; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; }
+        .clausula-title { font-weight: bold; margin-top: 1.5rem; margin-bottom: 0.5rem; text-decoration: underline; }
+        .contrato-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 10pt; }
+        .contrato-table th, .contrato-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; }
+        .paragrafo { text-indent: 2cm; text-align: justify; margin-bottom: 0.5rem; }
+
+        @media print { 
+            @page { margin: 0; }
+            html, body, #app, .print-wrapper { height: auto !important; min-height: auto !important; overflow: visible !important; position: static !important; display: block !important; background: white !important; margin: 0 !important; padding: 0 !important; } 
+            .no-print { display: none !important; } 
+            .cupom-termico { padding: 0 !important; width: 100% !important; max-width: 80mm !important; box-shadow: none !important; margin: 0 !important; border: none !important; }
+            .documento-juridico { padding: 15mm !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; box-shadow: none !important; margin: 0 !important; border: none !important; } 
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center p-4">
+<body class="bg-gray-100 text-gray-800 h-screen w-screen overflow-hidden native-feel selection:bg-blue-200">
 
-    <!-- Header -->
-    <header class="w-full max-w-4xl text-center mb-6">
-        <h1 class="text-2xl font-bold text-blue-400">Chamada Direta PRO (1-para-1)</h1>
-        <p class="text-xs text-gray-400 mt-1" id="status-text">Sistema P2P Stateless. Nenhuma base de dados utilizada.</p>
-    </header>
+<div id="app" v-cloak class="h-full w-full flex flex-col">
 
-    <!-- Seleção de Papel (Role) -->
-    <main id="role-selection" class="w-full max-w-sm bg-gray-800 p-6 rounded-lg shadow-lg text-center flex flex-col gap-4">
-        <button id="btn-role-host" class="bg-blue-600 hover:bg-blue-700 font-bold py-3 px-4 rounded transition-colors">
-            🎥 Criar Chamada (Gerar PIN)
-        </button>
-        <button id="btn-role-join" class="bg-green-600 hover:bg-green-700 font-bold py-3 px-4 rounded transition-colors">
-            👀 Entrar na Chamada (Usar PIN)
-        </button>
-    </main>
+    <!-- Loading State -->
+    <transition name="fade">
+        <div v-if="state.loading" class="fixed inset-0 bg-slate-900/80 z-[100] flex flex-col items-center justify-center text-white backdrop-blur-sm">
+            <i class="ph ph-spinner-gap animate-spin text-4xl mb-3 text-blue-400"></i>
+            <p class="text-sm font-bold tracking-wide text-white">{{ state.loadingMsg }}</p>
+        </div>
+    </transition>
 
-    <!-- UI da Sala (1-para-1) -->
-    <section id="room-ui" class="w-full max-w-4xl hidden flex-col gap-4">
+    <!-- MÓDULO DE IMPRESSÃO -->
+    <div v-if="impressao.ativa" class="print-wrapper min-h-screen bg-gray-300 w-full overflow-y-auto pb-20 z-50 absolute inset-0">
+        <div class="no-print sticky top-0 bg-slate-800 p-3 lg:p-4 flex justify-between items-center shadow-md z-50 h-[56px] lg:h-auto">
+            <button @click="impressao.ativa = false" class="px-3 h-9 rounded font-bold text-sm transition-colors flex items-center gap-1 bg-slate-700 text-white hover:bg-slate-600"><i class="ph-bold ph-arrow-left"></i> Voltar</button>
+            <button @click="acionarPrint" class="px-3 h-9 rounded font-bold text-sm transition-colors flex items-center gap-1 bg-blue-600 text-white hover:bg-blue-700"><i class="ph-bold ph-printer"></i> Imprimir</button>
+        </div>
+        <div :class="impressao.dados.tipo === 'a_vista' || impressao.dados.tipo === 'etiqueta' ? 'cupom-termico mt-4 lg:mt-8' : 'documento-juridico'">
+            <div v-html="conteudoImpressao"></div>
+        </div>
+    </div>
+
+    <!-- INTERFACE PRINCIPAL -->
+    <div v-show="!impressao.ativa" class="flex flex-col lg:flex-row h-full w-full relative">
         
-        <!-- Controles Superiores -->
-        <div class="bg-gray-800 p-4 rounded-lg shadow flex flex-col md:flex-row justify-between items-start gap-4">
+        <!-- SIDEBAR DESKTOP -->
+        <aside class="hidden lg:flex w-56 bg-slate-900 text-slate-300 flex-col h-full z-20 shrink-0 border-r border-slate-800 shadow-md">
+            <div class="p-4 text-white font-black text-xl flex flex-col gap-1 border-b border-slate-800 bg-slate-950">
+                <div class="flex items-center gap-2">
+                    <i class="ph-fill ph-storefront text-blue-500 text-2xl"></i>
+                    <span class="tracking-tight leading-none uppercase">PDV</span>
+                </div>
+                <!-- Indicador de Rede Desktop -->
+                <div class="flex items-center gap-1 mt-2 text-[10px] uppercase font-bold" :class="isOnline ? 'text-green-500' : 'text-red-500'">
+                    <i class="ph-fill" :class="isOnline ? 'ph-wifi-high' : 'ph-wifi-slash'"></i>
+                    {{ isOnline ? 'Online' : 'Offline' }}
+                    <span v-if="state.syncQueueSize > 0" class="text-yellow-400 ml-1">({{ state.syncQueueSize }} pendentes)</span>
+                    <i v-if="state.syncing" class="ph ph-arrows-clockwise animate-spin text-blue-400 ml-1"></i>
+                </div>
+            </div>
+            <nav class="flex-1 py-2 space-y-1 overflow-y-auto no-scrollbar">
+                <button v-for="menu in menusDesktop" :key="menu.id" @click="mudarTela(menu.id)" 
+                    :class="{'bg-blue-600/10 text-blue-400 border-l-4 border-blue-500': state.tela === menu.id, 'hover:bg-slate-800 text-slate-400 border-l-4 border-transparent': state.tela !== menu.id}" 
+                    class="w-full flex items-center justify-between px-4 py-3 transition-colors font-semibold text-left text-sm">
+                    <span class="flex items-center gap-3"><i :class="['text-xl', menu.icon]"></i> {{ menu.label }}</span>
+                    <span v-if="menu.badge && menu.badge() > 0" class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ menu.badge() }}</span>
+                </button>
+            </nav>
+            <div class="p-3 border-t border-slate-800 bg-slate-950 flex flex-col gap-2">
+                <button @click="forcarSync" :disabled="!isOnline || state.syncing" class="w-full flex justify-center gap-2 px-3 py-2 rounded transition-colors font-bold text-[11px] uppercase bg-slate-800 text-slate-400 hover:text-white disabled:opacity-50">
+                    <i class="ph-bold ph-arrows-clockwise"></i> Sincronizar
+                </button>
+                <button @click="mudarTela('config')" class="w-full flex justify-center gap-2 px-3 py-2 rounded transition-colors font-bold text-sm" :class="state.tela === 'config' ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 text-slate-400'"><i class="ph-bold ph-gear"></i> Ajustes</button>
+            </div>
+        </aside>
+
+        <!-- APP BAR NATIVO MOBILE -->
+        <header class="lg:hidden bg-slate-900 text-white h-[56px] px-3 flex justify-between items-center shadow-md z-30 shrink-0 w-full relative">
+            <div class="flex items-center gap-2 font-black text-base tracking-tight uppercase">
+                <i class="ph-fill ph-storefront text-blue-500 text-xl"></i>
+                <span class="leading-none">{{ tituloMobile }}</span>
+            </div>
             
-            <!-- Bloco do PIN e Inputs -->
-            <div class="flex-1 w-full flex flex-col gap-2 border-b md:border-b-0 md:border-r border-gray-700 pb-4 md:pb-0 md:pr-4">
-                
-                <div id="pin-display-block" class="text-center md:text-left">
-                    <span class="text-sm text-gray-400 block mb-1">Seu PIN (Envie para a outra pessoa):</span>
-                    <div class="text-3xl font-mono font-bold tracking-widest text-yellow-400" id="pin-display">
-                        ------
+            <div class="flex items-center gap-2">
+                <!-- Indicador Rede Mobile -->
+                <button @click="forcarSync" class="flex items-center justify-center p-1" :class="isOnline ? 'text-green-400' : 'text-red-400'" title="Status da Rede">
+                    <i v-if="state.syncing" class="ph ph-arrows-clockwise animate-spin text-blue-400 text-xl"></i>
+                    <i v-else class="ph-fill text-xl" :class="isOnline ? 'ph-wifi-high' : 'ph-wifi-slash'"></i>
+                    <span v-if="state.syncQueueSize > 0" class="absolute top-1 right-20 bg-yellow-500 text-black text-[8px] font-bold px-1 rounded-full">{{ state.syncQueueSize }}</span>
+                </button>
+                <button v-if="state.tela !== 'pdv'" @click="mudarTela('pdv')" class="h-9 w-9 flex items-center justify-center rounded-md font-bold transition-colors bg-blue-600 text-white hover:bg-blue-700"><i class="ph ph-barcode text-lg"></i></button>
+                <button @click="mudarTela('config')" class="h-9 w-9 flex items-center justify-center rounded-md font-bold transition-colors bg-slate-800 text-slate-300 hover:text-white"><i class="ph-bold ph-gear text-lg"></i></button>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto no-scrollbar relative p-2 md:p-4 lg:p-6 pb-[120px] lg:pb-6 bg-gray-100 flex flex-col">
+            
+            <!-- TELA: DASHBOARD -->
+            <section v-show="state.tela === 'dashboard'" class="max-w-7xl mx-auto w-full space-y-3 lg:space-y-6">
+                <div class="hidden lg:block"><h1 class="text-xl lg:text-2xl font-bold text-gray-800 uppercase tracking-wide">Painel Gerencial / BI</h1></div>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
+                    <div v-for="card in statsCards" :key="card.id" @click="filtrarFinanceiro(card.id)" class="bg-white p-3 lg:p-4 rounded shadow-sm border cursor-pointer hover:shadow-md transition-shadow active:bg-gray-50" :class="card.borderClass">
+                        <div class="flex items-center gap-1.5 lg:gap-2 mb-1 lg:mb-2" :class="card.textClass"><i :class="[card.icon, 'text-base lg:text-lg']"></i><h3 class="font-bold text-[10px] lg:text-xs uppercase tracking-wide truncate">{{ card.label }}</h3></div>
+                        <p class="text-lg lg:text-2xl font-black truncate text-gray-800">{{ formatarMoeda(card.value) }}</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="p-3 border-b border-gray-200 bg-gray-50 flex items-center gap-2"><i class="ph-bold ph-clock-counter-clockwise text-gray-500"></i> <h3 class="font-bold text-gray-800 uppercase text-xs">Últimas Vendas (Local)</h3></div>
+                    <div class="overflow-x-auto no-scrollbar">
+                        <table class="w-full text-left text-xs lg:text-sm whitespace-nowrap">
+                            <thead class="bg-slate-100 text-slate-600 border-b border-gray-200">
+                                <tr><th class="p-2 font-bold uppercase text-[10px]">Data/Hora</th><th class="p-2 font-bold uppercase text-[10px]">Cliente</th><th class="p-2 font-bold uppercase text-[10px] text-right">Valor Líquido</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr v-for="venda in ultimasVendas" :key="venda.id" class="hover:bg-gray-50">
+                                    <td class="p-2 text-gray-500 text-[10px] md:text-xs">{{ formatarDataTime(venda.dataHora) }}</td>
+                                    <td class="p-2 font-bold text-gray-800 text-[11px] md:text-xs">{{ getNomeCliente(venda.clienteId) }}</td>
+                                    <td class="p-2 text-right font-bold text-blue-700 text-[11px] md:text-xs">{{ formatarMoeda(venda.total) }}</td>
+                                </tr>
+                                <tr v-if="!ultimasVendas.length"><td colspan="3" class="p-4 text-center text-gray-400 text-xs">Nenhuma venda local.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TELA: PDV (CAIXA ABERTO) -->
+            <section v-show="state.tela === 'pdv'" class="flex flex-col lg:flex-row h-full gap-2 lg:gap-4 max-w-[1400px] mx-auto w-full">
+                <div class="flex-1 flex flex-col gap-2 lg:gap-4 h-full min-h-[400px]">
+                    <div class="bg-white p-2 lg:p-4 rounded shadow-sm border border-gray-300 shrink-0 relative flex flex-col justify-center">
+                        <label class="hidden lg:block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Código de Barras / Nome</label>
+                        <div class="flex gap-2 h-10 lg:h-12">
+                            <div class="relative flex-1 h-full">
+                                <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <input type="text" v-model="pdv.busca" @keyup.enter="buscarExato" class="w-full h-full pl-9 pr-3 text-sm lg:text-lg font-mono uppercase border border-gray-300 rounded text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-shadow bg-gray-50" placeholder="EAN ou Produto..." autofocus>
+                            </div>
+                            <label class="w-10 lg:w-12 h-full bg-slate-800 text-white rounded cursor-pointer hover:bg-slate-700 flex items-center justify-center transition-colors active:scale-95" title="Câmera">
+                                <i class="ph-bold ph-camera text-xl"></i>
+                                <input type="file" accept="image/*" capture="environment" class="hidden" @change="lerCodigoCamera">
+                            </label>
+                        </div>
+                        <div id="reader-hidden" class="hidden"></div>
+                        
+                        <div v-if="produtosFiltrados.length" class="absolute top-full left-0 w-full mt-1 bg-white border border-gray-300 shadow-lg max-h-48 overflow-y-auto z-50 rounded-b">
+                            <div v-for="p in produtosFiltrados" :key="p.id" @click="addCarrinho(p)" class="p-2 lg:p-3 border-b border-gray-100 hover:bg-blue-50 cursor-pointer flex justify-between items-center">
+                                <div><p class="font-bold text-xs lg:text-sm text-gray-800 uppercase">{{ p.nome }}</p><p class="text-[10px] font-mono mt-0.5 text-gray-500">Estq: {{p.estoque}}</p></div>
+                                <span class="font-bold text-blue-700 text-xs lg:text-sm">{{ formatarMoeda(p.precoVenda) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 bg-white border border-gray-300 shadow-sm rounded flex flex-col overflow-hidden relative">
+                        <div class="bg-blue-800 text-white px-2 py-1.5 lg:p-3 font-bold text-[11px] lg:text-sm uppercase tracking-wider flex justify-between items-center shrink-0">
+                            <span class="flex items-center gap-1.5"><i class="ph-bold ph-shopping-cart text-base"></i> Itens (<span class="text-yellow-300">{{ pdv.carrinho.length }}</span>)</span>
+                        </div>
+                        
+                        <div class="flex-1 overflow-y-auto no-scrollbar bg-white p-0">
+                            <table class="w-full text-left text-xs lg:text-sm">
+                                <thead class="bg-gray-100 border-b border-gray-300 sticky top-0 z-10 shadow-sm text-[10px] lg:text-xs text-gray-600">
+                                    <tr>
+                                        <th class="p-1.5 lg:p-3 text-center w-8 lg:w-10">Nº</th>
+                                        <th class="p-1.5 lg:p-3">DESCRIÇÃO</th>
+                                        <th class="p-1.5 lg:p-3 text-center w-20 lg:w-24">QTD</th>
+                                        <th class="p-1.5 lg:p-3 text-right hidden md:table-cell">UN(R$)</th>
+                                        <th class="p-1.5 lg:p-3 text-right">TOT(R$)</th>
+                                        <th class="p-1.5 w-8"></th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 font-mono text-[10px] lg:text-sm">
+                                    <tr v-for="(item, index) in pdv.carrinho" :key="item.id" class="hover:bg-blue-50/50">
+                                        <td class="p-1.5 lg:p-3 text-center text-gray-400">{{ (index + 1).toString().padStart(3, '0') }}</td>
+                                        <td class="p-1.5 lg:p-3 font-bold text-gray-800 truncate max-w-[120px] sm:max-w-[200px]" :title="item.nome">{{ item.nome.toUpperCase() }}</td>
+                                        <td class="p-1.5 lg:p-3 text-center">
+                                            <div class="inline-flex items-center justify-center bg-gray-100 rounded border border-gray-200 p-0.5 h-6 lg:h-8">
+                                                <button @click="alterarQtd(item, -1)" class="w-5 lg:w-6 h-full text-gray-600 flex items-center justify-center active:bg-gray-300"><i class="ph-bold ph-minus text-[10px]"></i></button>
+                                                <span class="w-6 lg:w-8 text-center font-bold">{{ item.quantidade }}</span>
+                                                <button @click="alterarQtd(item, 1)" class="w-5 lg:w-6 h-full text-gray-600 flex items-center justify-center active:bg-gray-300"><i class="ph-bold ph-plus text-[10px]"></i></button>
+                                            </div>
+                                        </td>
+                                        <td class="p-1.5 lg:p-3 text-right text-gray-500 hidden md:table-cell">{{ item.precoVenda.toFixed(2) }}</td>
+                                        <td class="p-1.5 lg:p-3 text-right font-bold text-blue-800">{{ (item.precoVenda * item.quantidade).toFixed(2) }}</td>
+                                        <td class="p-1.5 text-center">
+                                            <button @click="removerDoCarrinho(item)" class="text-red-500 p-1 active:bg-red-100 rounded"><i class="ph-bold ph-x text-sm"></i></button>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="!pdv.carrinho.length">
+                                        <td colspan="6" class="p-8 lg:p-12 text-center text-gray-400 font-sans">
+                                            <i class="ph-duotone ph-basket text-4xl mb-1 text-gray-300"></i>
+                                            <p class="uppercase font-bold text-[10px] tracking-widest">Carrinho Vazio</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
-                <div id="pin-input-block" class="w-full flex flex-col sm:flex-row gap-2 hidden">
-                    <input type="text" id="viewer-pin-input" maxlength="6" class="flex-1 bg-gray-900 text-white text-xl font-mono text-center tracking-widest p-2 rounded border border-gray-600 focus:outline-none focus:border-green-500 placeholder-gray-700" placeholder="DIGITE O PIN">
-                    <button id="btn-connect-room" class="bg-green-600 hover:bg-green-700 font-bold py-2 px-6 rounded transition-colors">Conectar</button>
+                <div class="hidden lg:flex w-[380px] xl:w-[420px] flex-col gap-4 h-full shrink-0">
+                    <div class="bg-slate-900 text-white rounded shadow-sm border border-slate-800 flex flex-col shrink-0">
+                        <div class="p-3 bg-slate-950 text-slate-400 text-xs font-bold uppercase tracking-wider border-b border-slate-800 text-center">Subtotal Bruto</div>
+                        <div class="p-6 text-center">
+                            <span class="text-2xl text-blue-400 font-bold mr-1">R$</span>
+                            <span class="text-6xl font-black tracking-tighter text-blue-400 font-mono">{{ formatarMoeda(totalCarrinho).replace('R$','').trim() }}</span>
+                        </div>
+                    </div>
+                    <button @click="pdv.modalCheckout = true" :disabled="!pdv.carrinho.length" class="w-full h-20 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-black text-2xl uppercase rounded shadow-md transition-colors flex items-center justify-center gap-3 shrink-0">
+                        <i class="ph-bold ph-check-square-offset text-3xl"></i> COBRAR (F3)
+                    </button>
+                </div>
+            </section>
+
+            <!-- Telas Menores (CRUDs) -->
+            <template v-for="crud in viewsCrud" :key="crud.id">
+                <section v-show="state.tela === crud.id" class="max-w-7xl mx-auto w-full space-y-3 lg:space-y-6">
+                    <div class="flex flex-row justify-between items-center bg-white p-3 lg:p-4 rounded shadow-sm border border-gray-200">
+                        <div class="hidden lg:block"><h1 class="text-lg lg:text-xl font-bold text-gray-800 uppercase">{{ crud.titulo }}</h1></div>
+                        <div class="lg:hidden font-bold text-sm text-gray-800 uppercase">{{ crud.titulo }}</div>
+                        <button v-if="crud.temLista" @click="abrirModalForm(crud)" class="h-8 lg:h-10 px-3 lg:px-4 rounded text-[11px] lg:text-sm font-bold bg-blue-600 text-white active:bg-blue-700 flex items-center gap-1 shadow-sm"><i class="ph-bold ph-plus"></i> NOVO</button>
+                    </div>
+
+                    <div v-if="crud.temLista" class="bg-white rounded shadow-sm border border-gray-200 overflow-x-auto no-scrollbar">
+                        <table class="w-full text-left text-[11px] lg:text-sm whitespace-nowrap">
+                            <thead class="bg-slate-100 text-slate-700 border-b border-gray-200">
+                                <tr>
+                                    <th v-for="col in crud.colunasTabela" :key="col.key" class="p-2 lg:p-3 font-bold uppercase tracking-wider" :class="col.classH">{{ col.label }}</th>
+                                    <th class="p-2 lg:p-3 font-bold uppercase text-center w-16 lg:w-24">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 font-mono">
+                                <tr v-for="item in db[crud.colecao]" :key="item.id" class="hover:bg-blue-50">
+                                    <td v-for="col in crud.colunasTabela" :key="col.key" class="p-2 lg:p-3 text-gray-700" :class="col.class">
+                                        <div v-if="col.formatHtml" v-html="col.formatHtml(item[col.key])"></div>
+                                        <div v-else>{{ col.format ? col.format(item[col.key]) : item[col.key] }}</div>
+                                    </td>
+                                    <td class="p-2 lg:p-3 text-center flex justify-center gap-1 lg:gap-2">
+                                        <button v-if="crud.acaoExtra" @click="crud.acaoExtra.handler(item)" class="text-slate-500 active:text-slate-900 h-6 w-6 lg:h-8 lg:w-8 flex items-center justify-center rounded bg-gray-100" :title="crud.acaoExtra.label"><i :class="crud.acaoExtra.icon" class="text-sm lg:text-lg"></i></button>
+                                        <button @click="abrirModalForm(crud, item)" class="text-blue-600 active:text-blue-800 h-6 w-6 lg:h-8 lg:w-8 flex items-center justify-center rounded bg-blue-50"><i class="ph-bold ph-pencil-simple text-sm lg:text-lg"></i></button>
+                                        <button @click="excluirRegistro(crud.colecao, item.id)" class="text-red-500 active:text-red-700 h-6 w-6 lg:h-8 lg:w-8 flex items-center justify-center rounded bg-red-50"><i class="ph-bold ph-trash text-sm lg:text-lg"></i></button>
+                                    </td>
+                                </tr>
+                                <tr v-if="!db[crud.colecao] || db[crud.colecao].length === 0"><td :colspan="crud.colunasTabela.length + 1" class="p-6 text-center text-gray-400 text-xs">Sem registros salvos localmente.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div v-else class="bg-white p-4 lg:p-6 rounded shadow-sm border border-gray-200">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
+                            <div v-for="campo in crud.formConfig" :key="campo.id" :class="campo.colClass || 'col-span-1 md:col-span-2'">
+                                <label class="block text-[10px] lg:text-xs font-bold text-gray-600 uppercase mb-1">{{ campo.label }}</label>
+                                <select v-if="campo.type === 'select'" v-model="db.configuracao[campo.id]" class="w-full h-10 lg:h-10 px-2 lg:px-3 border border-gray-300 rounded outline-none focus:border-blue-500 bg-gray-50 text-xs lg:text-sm">
+                                    <option v-for="opt in campo.options" :key="opt" :value="opt">{{opt}}</option>
+                                </select>
+                                <input v-else v-model="db.configuracao[campo.id]" :type="campo.type" class="w-full h-10 px-2 lg:px-3 border border-gray-300 rounded outline-none focus:border-blue-500 bg-gray-50 text-xs lg:text-sm" :placeholder="campo.placeholder">
+                            </div>
+                        </div>
+                        <div class="pt-4 flex justify-end"><button @click="salvarRegistro(crud.colecao, db.configuracao)" class="h-10 px-4 rounded font-bold uppercase text-[11px] lg:text-sm bg-blue-600 text-white active:bg-blue-700 flex items-center gap-1 shadow-sm"><i class="ph-bold ph-floppy-disk"></i> Salvar (Offline)</button></div>
+                    </div>
+                </section>
+            </template>
+
+            <!-- TELA: FINANCEIRO -->
+            <section v-show="state.tela === 'financeiro'" class="max-w-7xl mx-auto w-full space-y-3 lg:space-y-6">
+                <div class="flex flex-col bg-white p-3 rounded shadow-sm border border-gray-200 gap-2">
+                    <div class="hidden lg:block font-bold text-lg text-gray-800 uppercase">Gestão de Contas (Local)</div>
+                    <div class="flex overflow-x-auto no-scrollbar gap-2 pb-1">
+                        <button v-for="f in filtrosFinanceiros" :key="f.id" @click="estadoFin.filtro = f.id" class="h-7 px-3 text-[10px] uppercase font-bold rounded-full transition-colors whitespace-nowrap border" :class="estadoFin.filtro === f.id ? f.bgAtivo : 'bg-gray-100 text-gray-600 border-gray-200 active:bg-gray-200'">{{ f.label }}</button>
+                    </div>
+                </div>
+                
+                <div class="space-y-2 pb-2">
+                    <div v-for="grupo in contasAgrupadas" :key="grupo.clienteId" class="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+                        <div @click="toggleExpand(grupo.clienteId)" class="p-3 bg-gray-50 active:bg-gray-100 flex justify-between items-center cursor-pointer select-none">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600"><i class="ph-bold ph-user text-sm"></i></div>
+                                <div>
+                                    <h3 class="font-bold text-[11px] lg:text-xs text-gray-800 uppercase leading-tight">{{ grupo.nome }}</h3>
+                                    <p class="text-[9px] text-gray-500 font-bold uppercase">{{ grupo.vendas.length }} contrato(s)</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="text-right"><span class="font-bold text-sm text-blue-700">{{ formatarMoeda(grupo.total) }}</span></div>
+                                <i class="ph-bold ph-caret-down text-gray-400 transition-transform" :class="{'rotate-180 text-blue-600': isExpanded(grupo.clienteId)}"></i>
+                            </div>
+                        </div>
+
+                        <div v-show="isExpanded(grupo.clienteId)" class="p-2 space-y-2 bg-white">
+                            <div v-for="venda in grupo.vendas" :key="venda.vendaId" class="border border-gray-200 rounded text-xs">
+                                <div @click="toggleExpandVenda(venda.vendaId)" class="p-2 bg-gray-50 flex justify-between items-center cursor-pointer active:bg-gray-100">
+                                    <div class="flex items-center gap-1.5">
+                                        <i class="ph-fill ph-receipt text-gray-400"></i>
+                                        <div>
+                                            <p class="font-bold text-[10px] text-gray-700">DOC #{{ venda.vendaId.substring(0,6).toUpperCase() }}</p>
+                                            <p class="text-[9px] text-gray-500">{{ formatarDataBR(venda.dataHora) }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-[11px] text-gray-800">{{ formatarMoeda(venda.totalExibido) }}</span>
+                                        <button @click.stop="reimprimirContrato(venda.vendaId, grupo.clienteId)" class="p-1 rounded bg-white border border-gray-300 text-gray-600 active:bg-gray-200"><i class="ph-bold ph-printer"></i></button>
+                                        <i class="ph-bold ph-caret-down text-gray-400" :class="{'rotate-180': isVendaExpanded(venda.vendaId)}"></i>
+                                    </div>
+                                </div>
+
+                                <div v-show="isVendaExpanded(venda.vendaId)" class="border-t border-gray-100 divide-y divide-gray-50 bg-white">
+                                    <div v-for="conta in venda.parcelas" :key="conta.id" class="flex justify-between items-center p-2">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-8 text-center py-0.5 bg-gray-100 text-gray-600 rounded text-[9px] font-bold border border-gray-200">{{ conta.numeroParcela }}</span>
+                                            <p class="text-[10px] font-mono" :class="statusStyle(conta.status).text">{{ formatarDataBR(conta.vencimento) }}</p>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 lg:gap-3">
+                                            <span class="font-bold text-[10px]">{{ formatarMoeda(conta.valorAtualizado) }}</span>
+                                            <span class="px-1.5 py-0.5 text-[8px] font-bold uppercase rounded border" :class="statusStyle(conta.status).badge">{{ conta.status }}</span>
+                                            <button v-if="conta.status !== 'PAGO'" @click="baixarParcela(conta.id)" class="px-2 py-1 bg-green-100 text-green-700 active:bg-green-600 active:text-white border border-green-300 rounded text-[9px] font-bold transition-colors uppercase">Baixar</button>
+                                            <div v-else class="w-[45px]"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="!contasAgrupadas.length" class="bg-white rounded shadow-sm border border-gray-200 p-6 text-center text-gray-400">
+                        <p class="font-bold uppercase text-[10px]">Vazio localmente</p>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+        
+        <!-- BARRA FLUTUANTE TOTALIZADOR (MOBILE ONLY) PARA PDV -->
+        <div v-show="state.tela === 'pdv'" class="lg:hidden fixed bottom-[56px] left-0 w-full bg-white border-t border-gray-300 p-2 flex justify-between items-center z-40 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+            <div class="flex flex-col ml-1">
+                <span class="text-[9px] font-bold text-gray-500 uppercase leading-none">Subtotal Líquido</span>
+                <span class="text-xl font-black text-blue-700 font-mono">{{ formatarMoeda(totalComDesconto) }}</span>
+            </div>
+            <button @click="pdv.modalCheckout = true" :disabled="!pdv.carrinho.length" class="h-10 px-4 bg-green-600 text-white font-bold rounded shadow-sm uppercase text-[11px] flex items-center gap-1 disabled:bg-gray-400 active:scale-95 transition-transform"><i class="ph-bold ph-check-square-offset text-lg"></i> Cobrar</button>
+        </div>
+
+        <!-- APP BOTTOM NAVIGATION NATIVO MOBILE -->
+        <nav class="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-around items-center z-50 h-[56px] pb-safe">
+            <button v-for="menu in menusMobile" :key="menu.id" @click="mudarTela(menu.id)" class="flex flex-col items-center justify-center w-full h-full relative" :class="state.tela === menu.id ? 'text-blue-600' : 'text-gray-500 active:text-gray-800'">
+                <span v-if="menu.badge && menu.badge() > 0" class="absolute top-1 right-3 bg-red-500 text-white text-[8px] font-bold px-1 rounded-full">{{ menu.badge() }}</span>
+                <i :class="[state.tela === menu.id ? 'ph-fill' : 'ph', menu.icon, 'text-[22px]']"></i>
+                <span class="text-[9px] font-bold mt-0.5 leading-none">{{ menu.label }}</span>
+            </button>
+        </nav>
+        
+    </div>
+
+    <!-- MODAIS E CHECKOUT -->
+    <transition name="slide-up">
+        <div v-if="pdv.modalCheckout" class="fixed inset-0 z-[100] flex flex-col justify-end lg:justify-center p-0 lg:p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div class="bg-white w-full max-w-lg lg:mx-auto rounded-t-xl lg:rounded-md shadow-2xl flex flex-col max-h-[90vh] lg:max-h-[85vh] overflow-hidden border border-gray-300">
+                <div class="bg-slate-800 text-white p-3 lg:p-4 flex justify-between items-center shrink-0">
+                    <h3 class="font-bold text-sm uppercase tracking-wider">Caixa (Modo Offline-First)</h3>
+                    <button @click="pdv.modalCheckout = false" class="text-white/70 active:text-white p-1"><i class="ph-bold ph-x text-xl"></i></button>
+                </div>
+                
+                <div class="p-4 lg:p-6 space-y-4 bg-white overflow-y-auto no-scrollbar">
+                    <div class="grid grid-cols-2 gap-3 mb-2">
+                        <div class="bg-gray-50 border border-gray-200 rounded p-2 text-center flex flex-col justify-center">
+                            <p class="text-[10px] font-bold text-gray-500 uppercase">Subtotal Bruto</p>
+                            <h2 class="text-lg font-bold text-gray-700 font-mono">{{ formatarMoeda(totalCarrinho) }}</h2>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-center font-bold text-gray-500 uppercase mb-1">Desconto (R$)</label>
+                            <input type="number" min="0" v-model.number="pdv.desconto" class="w-full h-10 px-2 text-center text-red-600 font-bold border border-red-300 rounded outline-none focus:border-red-500 bg-red-50">
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-50 border border-blue-200 rounded p-3 text-center">
+                        <p class="text-[10px] font-bold text-blue-800 uppercase tracking-widest mb-1">Total a Pagar Líquido</p>
+                        <h2 class="text-4xl font-black text-blue-700 font-mono">{{ formatarMoeda(totalComDesconto) }}</h2>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-2">Forma de Pagamento</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <label v-for="forma in opcoesPagamento" :key="forma.id" class="flex flex-col items-center justify-center p-2 border rounded cursor-pointer text-center h-20 lg:h-24 select-none" :class="pdv.formaPgto === forma.id ? forma.bgAtivo : 'border-gray-200 active:bg-gray-50 text-gray-500'">
+                                <input type="radio" v-model="pdv.formaPgto" :value="forma.id" class="hidden">
+                                <i :class="[forma.icon, 'text-2xl mb-1']" :class="pdv.formaPgto === forma.id ? forma.iconColor : 'text-gray-400'"></i>
+                                <span class="font-bold text-[9px] uppercase leading-tight" :class="pdv.formaPgto === forma.id ? 'text-blue-900' : 'text-gray-600'">{{ forma.label }}</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div v-if="pdv.formaPgto === 'parcelado_loja'" class="p-3 bg-yellow-50 border border-yellow-200 rounded space-y-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-700 uppercase mb-1">Cliente Vinculado *</label>
+                            <select v-model="pdv.clienteId" class="w-full h-10 px-2 border border-yellow-300 rounded text-xs outline-none focus:border-yellow-500 bg-white">
+                                <option value="" disabled>Selecionar</option>
+                                <option v-for="c in db.clientes" :key="c.id" :value="c.id">{{ c.nome }}</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 uppercase mb-1">Entrada R$</label>
+                                <input type="number" min="0" v-model.number="pdv.crediario.entrada" class="w-full h-10 px-2 border border-yellow-300 rounded text-xs outline-none bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-700 uppercase mb-1">Parcelas</label>
+                                <select v-model.number="pdv.crediario.parcelas" class="w-full h-10 px-2 border border-yellow-300 rounded text-xs outline-none bg-white"><option v-for="n in 12" :key="n" :value="n">{{ n }}x</option></select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-3 bg-gray-100 border-t border-gray-200 flex gap-2 pb-[env(safe-area-inset-bottom,12px)] shrink-0">
+                    <button @click="pdv.modalCheckout = false" class="h-12 px-2 rounded font-bold uppercase text-[11px] bg-white border border-gray-300 text-gray-700 active:bg-gray-100 flex-[1]">Cancelar</button>
+                    <button @click="finalizarVenda" :disabled="!podeFinalizar" class="h-12 px-2 rounded font-bold uppercase text-[11px] bg-green-600 text-white active:bg-green-700 flex-[2] disabled:bg-gray-400 flex items-center justify-center gap-1 shadow-sm"><i class="ph-bold ph-printer text-base"></i> Gravar Lançamento</button>
                 </div>
             </div>
+        </div>
+    </transition>
 
-            <!-- Controles de Setup de Hardware (Qualidade e Lente) -->
-            <div class="flex flex-col gap-2 w-full md:w-auto">
-                <span class="text-xs text-gray-400 uppercase font-bold">Dispositivos</span>
-                <select id="camera-select" class="bg-gray-700 text-white text-sm rounded p-2 border border-gray-600 w-full focus:outline-none focus:border-blue-500">
-                    <option value="">Carregando câmeras...</option>
-                </select>
-                <select id="quality-select" class="bg-gray-700 text-white text-sm rounded p-2 border border-gray-600 w-full focus:outline-none focus:border-blue-500">
-                    <option value="hd">Qualidade: HD (720p - Ideal para Wi-Fi)</option>
-                    <option value="sd">Qualidade: SD (480p - Ideal para Móvel/4G)</option>
-                </select>
+    <transition name="fade">
+        <div v-if="modal.aberto" class="fixed inset-0 z-[100] flex items-center justify-center p-2 lg:p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div class="bg-white w-full max-w-lg rounded-md shadow-2xl flex flex-col max-h-[90vh] border border-gray-300">
+                <div class="p-3 border-b border-gray-200 bg-slate-800 text-white flex justify-between items-center shrink-0">
+                    <h2 class="font-bold text-[11px] lg:text-sm uppercase">{{ modal.id ? 'Editar Cadastro' : 'Novo Cadastro' }}</h2>
+                    <button @click="modal.aberto = false" class="text-slate-300 active:text-white p-1"><i class="ph-bold ph-x text-lg"></i></button>
+                </div>
+                <div class="p-4 overflow-y-auto bg-gray-50 flex-1">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div v-for="campo in modal.config.formConfig" :key="campo.id" :class="campo.colClass || 'col-span-1 md:col-span-2'">
+                            <label class="block text-[10px] lg:text-xs font-bold text-gray-700 uppercase mb-1">{{ campo.label }}</label>
+                            <select v-if="campo.type === 'select'" v-model="modal.dados[campo.id]" class="w-full h-10 px-2 border border-gray-300 rounded outline-none focus:border-blue-500 bg-white text-xs lg:text-sm">
+                                <option value="" disabled selected>Selecionar...</option>
+                                <option v-for="opt in campo.options" :key="opt" :value="opt">{{opt}}</option>
+                            </select>
+                            <input v-else v-model="modal.dados[campo.id]" :type="campo.type" :min="campo.type === 'number' ? '0' : null" class="w-full h-10 px-2 border border-gray-300 rounded outline-none focus:border-blue-500 bg-white text-xs lg:text-sm" :placeholder="campo.placeholder">
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3 border-t border-gray-200 bg-white flex justify-end gap-2 shrink-0">
+                    <button @click="modal.aberto = false" class="h-10 px-4 rounded text-[11px] lg:text-sm font-bold uppercase text-gray-600 bg-gray-100 active:bg-gray-200 border border-gray-300">Voltar</button>
+                    <button @click="salvarModal" class="h-10 px-6 rounded text-[11px] lg:text-sm font-bold uppercase text-white bg-blue-600 active:bg-blue-700 shadow-sm">Salvar Local</button>
+                </div>
             </div>
         </div>
+    </transition>
 
-        <!-- Controles em Tempo Real (Ações durante a chamada) -->
-        <div class="bg-gray-900 p-3 rounded-lg shadow flex flex-wrap justify-center items-center gap-2 border border-gray-700">
-            <button id="btn-toggle-mic" class="bg-gray-700 hover:bg-gray-600 text-white text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2">
-                🎤 Mic On
-            </button>
-            <button id="btn-toggle-video" class="bg-gray-700 hover:bg-gray-600 text-white text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2">
-                📹 Cam On
-            </button>
-            <button id="btn-share-screen" class="bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2">
-                🖥️ Tela
-            </button>
-            <button id="btn-toggle-wake" class="bg-yellow-600 hover:bg-yellow-700 text-white text-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2">
-                <span id="wake-icon">🔓</span> Tela Fixa
-            </button>
-        </div>
+</div>
 
-        <p class="text-[0.65rem] text-center text-gray-500 uppercase tracking-wider">O compartilhamento de tela funciona nativamente apenas em Desktops/Notebooks.</p>
+<script>
+// =========================================================================
+// CONFIGURAÇÃO DO BACKEND
+// =========================================================================
+const API_URL = "https://script.google.com/macros/s/AKfycbw4pBJLiD-JUYI6AfwiHvUw-KryoOFiC005Qf6A0U0EduZ0_oztQanRJs2B63-FQ0_v7g/exec"; 
 
-        <!-- GRID DE VÍDEOS -->
-        <div id="video-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-            
-            <!-- Slot Local -->
-            <div class="video-container border-blue-500 border-2 shadow-[0_0_10px_rgba(59,130,246,0.5)]">
-                <video id="local-video" autoplay playsinline muted></video>
-                <div class="video-label">Você</div>
-            </div>
-            
-            <!-- Slot Remoto -->
-            <div class="video-container border-green-500 border-2 shadow-[0_0_10px_rgba(34,197,94,0.3)] hidden" id="wrapper-remote">
-                <video id="remote-video" autoplay playsinline></video>
-                <div class="video-label" id="remote-label">Aguardando Conexão...</div>
-            </div>
+const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
 
-        </div>
+const gerarUUID = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+});
 
-    </section>
+createApp({
+    setup() {
+        const isOnline = ref(navigator.onLine);
+        
+        const formatarMoeda = v => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+        const formatarDataBR = d => d ? new Date(d).toLocaleDateString('pt-BR', {timeZone:'UTC'}) : '';
+        const formatarDataTime = d => d ? new Date(d).toLocaleString('pt-BR') : '';
+        const formatarDataExtenso = d => `${d.getDate()} de ${["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"][d.getMonth()]} de ${d.getFullYear()}`;
+        
+        const swal = (title, text, icon='success') => Swal.fire({ title, text, icon, confirmButtonColor: '#2563eb', customClass:{popup:'rounded-lg border border-gray-300 w-[90%] max-w-sm', title:'text-lg'} });
 
-    <script>
-        // ==========================================
-        // Configuração de Infraestrutura (STUN/TURN)
-        // OBS: Servidores STUN não são banco de dados. Eles apenas refletem o IP público.
-        // ==========================================
-        const webrtcConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ],
-            iceTransportPolicy: 'all'
+        const state = reactive({ tela: 'pdv', loading: false, loadingMsg: '', syncing: false, syncQueueSize: 0 });
+        const db = reactive({ configuracao: {}, produtos: [], clientes: [], vendas: [], contasReceber: [], itensVenda: [] });
+
+        // =========================================================================
+        // MOTOR OFFLINE-FIRST (Tratamento Robusto de CORS e Permissões)
+        // =========================================================================
+        const LocalDB = {
+            salvar: () => localStorage.setItem('pdv_db', JSON.stringify(db)),
+            carregar: () => {
+                const stored = localStorage.getItem('pdv_db');
+                if (stored) Object.assign(db, JSON.parse(stored));
+            }
         };
 
-        // ==========================================
-        // Estado Global e Variáveis
-        // ==========================================
-        let peer = null;
-        let localStream = null;
-        let screenStream = null;
-        let activeCall = null;
-        let wakeLock = null;
-        
-        let isHost = false;
-        let isScreenSharing = false;
-        let isMicMuted = false;
-        let isVideoMuted = false;
-
-        // Elementos DOM
-        const statusText = document.getElementById('status-text');
-        const roleSelection = document.getElementById('role-selection');
-        const roomUi = document.getElementById('room-ui');
-        
-        const pinDisplayBlock = document.getElementById('pin-display-block');
-        const pinDisplay = document.getElementById('pin-display');
-        
-        const pinInputBlock = document.getElementById('pin-input-block');
-        const viewerPinInput = document.getElementById('viewer-pin-input');
-        const btnConnectRoom = document.getElementById('btn-connect-room');
-        
-        const cameraSelect = document.getElementById('camera-select');
-        const qualitySelect = document.getElementById('quality-select');
-        
-        const btnToggleMic = document.getElementById('btn-toggle-mic');
-        const btnToggleVideo = document.getElementById('btn-toggle-video');
-        const btnShareScreen = document.getElementById('btn-share-screen');
-        const btnToggleWake = document.getElementById('btn-toggle-wake');
-        const wakeIcon = document.getElementById('wake-icon');
-        
-        const localVideo = document.getElementById('local-video');
-        const remoteVideo = document.getElementById('remote-video');
-        const wrapperRemote = document.getElementById('wrapper-remote');
-        const remoteLabel = document.getElementById('remote-label');
-
-        // ==========================================
-        // Utilitários Puros
-        // ==========================================
-        function generatePIN() {
-            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
-            let result = '';
-            for (let i = 0; i < 6; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return result;
-        }
-
-        function updateStatus(text, type = 'info') {
-            statusText.innerHTML = text;
-            if (type === 'error') statusText.className = "text-xs mt-1 text-red-500 font-bold";
-            else if (type === 'success') statusText.className = "text-xs mt-1 text-green-400 font-bold";
-            else statusText.className = "text-xs mt-1 text-gray-400";
-        }
-
-        // ==========================================
-        // Lógica de Renderização de Mídia (1-para-1)
-        // ==========================================
-        function setupRemoteStream(stream) {
-            remoteVideo.srcObject = stream;
-            wrapperRemote.classList.remove('hidden');
-            remoteLabel.innerText = "Parceiro Conectado";
-            updateStatus("Conexão P2P estabelecida com sucesso!", 'success');
-        }
-
-        function clearRemoteStream() {
-            remoteVideo.srcObject = null;
-            wrapperRemote.classList.add('hidden');
-            remoteLabel.innerText = "Aguardando...";
-            updateStatus("O parceiro desconectou da chamada.", 'error');
-        }
-
-        // ==========================================
-        // Captura de Câmera e Restrições de Qualidade
-        // ==========================================
-        async function getCameras() {
-            try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        const SyncService = {
+            isProcessing: false,
+            atualizarSize() {
+                const q = JSON.parse(localStorage.getItem('pdv_queue') || '[]');
+                state.syncQueueSize = q.length;
+            },
+            enqueue(operation) {
+                const queue = JSON.parse(localStorage.getItem('pdv_queue') || '[]');
+                queue.push(operation);
+                localStorage.setItem('pdv_queue', JSON.stringify(queue));
+                this.atualizarSize();
+                if (isOnline.value) this.processQueue(false);
+            },
+            async pull(manual = false) {
+                if (!isOnline.value || API_URL.includes("SUA_URL_AQUI")) return;
+                if (manual) { state.loading = true; state.loadingMsg = 'Baixando dados...'; }
                 
-                cameraSelect.innerHTML = '';
-                videoDevices.forEach(device => {
-                    const option = document.createElement('option');
-                    option.value = device.deviceId;
-                    option.text = device.label || `Câmera ${cameraSelect.length + 1}`;
-                    cameraSelect.appendChild(option);
-                });
-            } catch (error) {
-                console.error("Erro ao listar câmeras:", error);
-            }
-        }
-
-        function getMediaConstraints(deviceId, quality) {
-            let videoConstraints = {
-                facingMode: "user",
-                frameRate: { ideal: 30, max: 30 }
-            };
-
-            if (deviceId) {
-                videoConstraints.deviceId = { exact: deviceId };
-                delete videoConstraints.facingMode;
-            }
-
-            // Definição estrita de banda para mobile
-            if (quality === 'hd') {
-                videoConstraints.width = { ideal: 1280, max: 1280 };
-                videoConstraints.height = { ideal: 720, max: 720 };
-            } else { // sd
-                videoConstraints.width = { ideal: 640, max: 640 };
-                videoConstraints.height = { ideal: 480, max: 480 };
-            }
-
-            return { video: videoConstraints, audio: true };
-        }
-
-        async function openCamera() {
-            const deviceId = cameraSelect.value || null;
-            const quality = qualitySelect.value;
-            const constraints = getMediaConstraints(deviceId, quality);
-
-            try {
-                if (isScreenSharing) stopScreenShare();
-
-                if (localStream) {
-                    localStream.getTracks().forEach(track => track.stop());
-                }
-                
-                localStream = await navigator.mediaDevices.getUserMedia(constraints);
-                
-                // Restaura o estado atual de Mute (se o usuário trocar a câmera com mic mutado)
-                localStream.getAudioTracks().forEach(track => track.enabled = !isMicMuted);
-                localStream.getVideoTracks().forEach(track => track.enabled = !isVideoMuted);
-                
-                if (isVideoMuted) localVideo.classList.add('muted-visual');
-                else localVideo.classList.remove('muted-visual');
-
-                localVideo.srcObject = localStream;
-                localVideo.classList.remove('screen-share');
-                
-                // Atualiza a track na conexão remota sem derrubar a chamada
-                if (activeCall && activeCall.peerConnection) {
-                    const videoSender = activeCall.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-                    const audioSender = activeCall.peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
+                try {
+                    const res = await fetch(API_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'PULL' }),
+                        headers: { 'Content-Type': 'text/plain' },
+                        redirect: 'follow' 
+                    });
                     
-                    if (videoSender && localStream.getVideoTracks()[0]) {
-                        videoSender.replaceTrack(localStream.getVideoTracks()[0]);
+                    const text = await res.text();
+                    
+                    if (text.includes("<html") || text.includes("Sign in")) {
+                        throw new Error("Acesso Negado. Você não marcou 'Qualquer pessoa' no momento de implantar o AppScript.");
                     }
-                    if (audioSender && localStream.getAudioTracks()[0]) {
-                        audioSender.replaceTrack(localStream.getAudioTracks()[0]);
+                    
+                    const resData = JSON.parse(text);
+                    if (resData.status === 'success') {
+                        Object.assign(db, resData.data);
+                        LocalDB.salvar();
+                    } else {
+                        throw new Error(resData.message || "Erro desconhecido no backend.");
                     }
+                } catch(e) { 
+                    console.error("Erro no Pull: ", e); 
+                    if (manual) throw e;
+                } finally { 
+                    if (manual) state.loading = false; 
                 }
-                return true;
-            } catch (error) {
-                updateStatus("Erro: Permissão de câmera negada ou resolução não suportada.", 'error');
-                console.error(error);
-                return false;
+            },
+            async processQueue(manual = false) {
+                if (!isOnline.value || this.isProcessing || API_URL.includes("SUA_URL_AQUI")) return;
+                
+                const queue = JSON.parse(localStorage.getItem('pdv_queue') || '[]');
+                if (queue.length === 0) return;
+
+                this.isProcessing = true;
+                state.syncing = true;
+                if (manual) { state.loading = true; state.loadingMsg = 'Enviando dados...'; }
+
+                try {
+                    const res = await fetch(API_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'SYNC', payload: queue }),
+                        headers: { 'Content-Type': 'text/plain' },
+                        redirect: 'follow' 
+                    });
+                    
+                    const text = await res.text();
+                    
+                    if (text.includes("<html") || text.includes("Sign in")) {
+                        throw new Error("Acesso Negado. Você não marcou 'Qualquer pessoa' no momento de implantar o AppScript.");
+                    }
+                    
+                    const data = JSON.parse(text);
+                    
+                    if (data.status === 'success') {
+                        localStorage.setItem('pdv_queue', '[]');
+                        this.atualizarSize();
+                    } else {
+                        throw new Error(data.message || 'Erro desconhecido retornado pelo servidor.');
+                    }
+                } catch(e) {
+                    console.error("Falha ao Sincronizar Fila: ", e);
+                    if (manual) throw e;
+                } finally {
+                    this.isProcessing = false;
+                    state.syncing = false;
+                    if (manual) state.loading = false;
+                }
             }
-        }
+        };
 
-        cameraSelect.addEventListener('change', async () => {
-            updateStatus("Trocando lente da câmera...");
-            await openCamera();
+        window.addEventListener('online', () => { isOnline.value = true; SyncService.processQueue(false); });
+        window.addEventListener('offline', () => { isOnline.value = false; });
+
+        // =========================================================================
+
+        const menusDesktop = [
+            { id: 'pdv', label: 'CAIXA (F2)', icon: 'ph-shopping-cart' },
+            { id: 'dashboard', label: 'PAINEL BI', icon: 'ph-chart-bar' },
+            { id: 'clientes', label: 'CLIENTES', icon: 'ph-users' },
+            { id: 'produtos', label: 'ESTOQUE', icon: 'ph-package' },
+            { id: 'financeiro', label: 'FINANCEIRO', icon: 'ph-currency-dollar', badge: () => statusCards.value.atrasoQtd }
+        ];
+
+        const menusMobile = [
+            { id: 'dashboard', label: 'Início', icon: 'ph-house' },
+            { id: 'produtos', label: 'Estoque', icon: 'ph-package' },
+            { id: 'pdv', label: 'Caixa', icon: 'ph-barcode' },
+            { id: 'clientes', label: 'Clientes', icon: 'ph-users' },
+            { id: 'financeiro', label: 'Contas', icon: 'ph-currency-dollar', badge: () => statusCards.value.atrasoQtd }
+        ];
+
+        const tituloMobile = computed(() => {
+            const current = [...menusDesktop, {id:'config', label:'Ajustes'}].find(m => m.id === state.tela);
+            return current ? current.label.replace(' (F2)','') : 'PDV';
         });
 
-        qualitySelect.addEventListener('change', async () => {
-            updateStatus("Ajustando resolução/banda da câmera...");
-            await openCamera();
+        onMounted(() => {
+            LocalDB.carregar();
+            SyncService.atualizarSize();
+            
+            if (isOnline.value) {
+                SyncService.pull(false).then(() => SyncService.processQueue(false));
+            }
+
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'F2') { e.preventDefault(); state.tela = 'pdv'; }
+                if (e.key === 'F3' && state.tela === 'pdv' && podeFinalizar.value) { e.preventDefault(); pdv.modalCheckout = true; }
+            });
         });
 
-        // ==========================================
-        // Controles de Mídia Ativos (Mute / Unmute)
-        // ==========================================
-        btnToggleMic.addEventListener('click', () => {
-            if (!localStream) return;
-            isMicMuted = !isMicMuted;
+        const configProduto = [ { id: 'codigoBarras', label: 'Cód. Barras/EAN', type: 'text', colClass: 'col-span-1' }, { id: 'nome', label: 'Descrição *', type: 'text', colClass: 'col-span-1 md:col-span-1' }, { id: 'precoCusto', label: 'Custo R$', type: 'number', colClass: 'col-span-1' }, { id: 'precoVenda', label: 'Venda R$ *', type: 'number', colClass: 'col-span-1' }, { id: 'estoque', label: 'Qtd. Estoque', type: 'number', colClass: 'md:col-span-2' } ];
+        
+        // NOVO: Array de Configuração para o formulário de cliente (CRUD) expandido
+        const configCliente = [ 
+            { id: 'documento', label: 'CPF/CNPJ *', type: 'text', colClass: 'col-span-1 md:col-span-1' },
+            { id: 'rg', label: 'RG', type: 'text', colClass: 'col-span-1 md:col-span-1' },
+            { id: 'nome', label: 'Nome / Razão *', type: 'text', colClass: 'col-span-1 md:col-span-2' }, 
+            { id: 'nacionalidade', label: 'Nacionalidade', type: 'text', colClass: 'col-span-1' },
+            { id: 'estadoCivil', label: 'Estado Civil', type: 'select', options: ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'União Estável'], colClass: 'col-span-1' },
+            { id: 'profissao', label: 'Profissão', type: 'text', colClass: 'col-span-1' },
+            { id: 'telefone', label: 'Telefone', type: 'text', colClass: 'col-span-1' }, 
+            { id: 'email', label: 'E-mail', type: 'email', colClass: 'col-span-1 md:col-span-2' },
+            { id: 'endereco', label: 'Endereço Completo', type: 'text', colClass: 'col-span-1 md:col-span-2' } 
+        ];
+
+        const viewsCrud = [
+            { id: 'clientes', titulo: 'Clientes', colecao: 'clientes', temLista: true, formConfig: configCliente, colunasTabela: [ {label:'Nome/Razão', key:'nome', class:'font-bold text-[10px] lg:text-xs truncate max-w-[100px]'}, {label:'Doc.', key:'documento', class:'font-mono text-[9px] lg:text-xs'} ] },
+            { id: 'produtos', titulo: 'Produtos', colecao: 'produtos', temLista: true, formConfig: configProduto, acaoExtra: { icon: 'ph-bold ph-barcode', label: 'Etiqueta', handler: p => prepararEtiqueta(p) }, colunasTabela: [ 
+                {label:'Descrição', key:'nome', class:'font-bold uppercase text-[10px] lg:text-xs truncate max-w-[120px]'}, 
+                {label:'Estoque', key:'estoque', class:'text-center font-mono', classH:'text-center', formatHtml: (val) => val <= 5 ? `<span class="bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded text-[10px] border border-red-200" title="Estoque Mínimo">${val}</span>` : `<span class="font-bold text-gray-700">${val}</span>` }, 
+                {label:'Pr. Venda', key:'precoVenda', class:'font-bold text-blue-700 text-right', classH:'text-right', format: formatarMoeda} 
+            ] },
+            { id: 'config', titulo: 'Dados da Loja', colecao: 'configuracao', temLista: false, formConfig: [ {id:'razaoSocial', label:'Nome Fantasia *', type:'text'}, {id:'cnpj', label:'CNPJ/CPF *', type:'text', colClass:'col-span-1'}, {id:'telefone', label:'Telefone', type:'text', colClass:'col-span-1'}, {id:'endereco', label:'Endereço *', type:'text'}, {id:'cidadeEStado', label:'Cidade - UF *', type:'text'}, ] }
+        ];
+
+        const modal = reactive({ aberto: false, config: null, dados: {} });
+        const abrirModalForm = (crudConfig, registro = null) => { modal.config = crudConfig; modal.dados = registro ? { ...registro } : {}; modal.aberto = true; };
+        
+        const salvarRegistro = (colecao, dadosPayload) => {
+            if (!dadosPayload.id) dadosPayload.id = gerarUUID();
             
-            // Atua em todas as trilhas de áudio enviadas
-            localStream.getAudioTracks().forEach(track => track.enabled = !isMicMuted);
+            if(colecao === 'configuracao') db.configuracao = dadosPayload;
+            else {
+                const idx = db[colecao].findIndex(i => i.id === dadosPayload.id);
+                if(idx > -1) db[colecao][idx] = dadosPayload; else db[colecao].push(dadosPayload);
+            }
             
-            if (isMicMuted) {
-                btnToggleMic.innerHTML = "🔇 Mic Off";
-                btnToggleMic.classList.replace('bg-gray-700', 'bg-red-900');
+            LocalDB.salvar();
+            SyncService.enqueue({ type: 'SALVAR', colecao, registro: dadosPayload });
+            
+            modal.aberto = false; 
+            swal('OK', 'Salvo localmente (Sincronização em fila)', 'success');
+        };
+
+        const salvarModal = () => salvarRegistro(modal.config.colecao, modal.dados);
+        
+        const excluirRegistro = async (colecao, id) => {
+            const r = await Swal.fire({ title:'Excluir?', icon:'warning', showCancelButton:true, confirmButtonColor:'#dc2626', confirmButtonText: 'Sim', cancelButtonText: 'Não', customClass:{popup:'rounded border border-gray-300 w-[90%] max-w-sm'} });
+            if(r.isConfirmed) {
+                db[colecao] = db[colecao].filter(i => i.id !== id);
+                LocalDB.salvar();
+                SyncService.enqueue({ type: 'EXCLUIR', colecao, id });
+            }
+        };
+
+        const isHoje = (isoString) => {
+            if (!isoString) return false;
+            const d = new Date(isoString); const hj = new Date();
+            return d.getDate() === hj.getDate() && d.getMonth() === hj.getMonth() && d.getFullYear() === hj.getFullYear();
+        };
+
+        const statusCards = computed(() => {
+            let s = { recHoje:0, aRecHoje:0, atraso:0, atrasoQtd:0, vendasHojeBruto:0, qtdVendasHoje:0 };
+            db.contasReceber.forEach(c => {
+                if(c.status==='PAGO' && isHoje(c.dataPagamento)) s.recHoje += c.valorAtualizado;
+                if(c.status==='PENDENTE' && isHoje(c.vencimento)) s.aRecHoje += c.valorAtualizado;
+                if(c.status==='ATRASADO') { s.atraso += c.valorAtualizado; s.atrasoQtd++; }
+            });
+            db.vendas.forEach(v => {
+                if(isHoje(v.dataHora)) { s.vendasHojeBruto += v.total; s.qtdVendasHoje++; }
+            });
+            return s;
+        });
+
+        const statsCards = computed(() => [ 
+            { id: 'VENDAS', label: 'Faturamento Hoje', value: statusCards.value.vendasHojeBruto, borderClass: 'border-l-[3px] border-l-blue-500', textClass: 'text-blue-700', icon: 'ph-fill ph-shopping-cart' }, 
+            { id: 'TICKET', label: 'Ticket Médio', value: statusCards.value.vendasHojeBruto > 0 ? (statusCards.value.vendasHojeBruto / statusCards.value.qtdVendasHoje) : 0, borderClass: 'border-l-[3px] border-l-purple-500', textClass: 'text-purple-700', icon: 'ph-fill ph-chart-polar' }, 
+            { id: 'PAGO', label: 'Entradas de Caixa', value: statusCards.value.recHoje, borderClass: 'border-l-[3px] border-l-green-500', textClass: 'text-green-700', icon: 'ph-fill ph-check-circle' }, 
+            { id: 'ATRASADO', label: 'Inadimplência', value: statusCards.value.atraso, borderClass: 'border-l-[3px] border-l-red-500', textClass: 'text-red-700', icon: 'ph-fill ph-warning-circle' } 
+        ]);
+
+        const getNomeCliente = id => { const c = db.clientes.find(x => x.id === id); return c ? c.nome : 'AVULSO'; };
+        const ultimasVendas = computed(() => [...db.vendas].reverse().slice(0,6));
+
+        const estadoFin = reactive({ filtro: 'TODOS', expansao: {}, expansaoVenda: {} });
+        const filtrosFinanceiros = [ {id:'TODOS', label:'Todos', bgAtivo:'bg-slate-800 text-white border-slate-800'}, {id:'ATRASADO', label:'Atrasado', bgAtivo:'bg-red-600 text-white border-red-600'}, {id:'PENDENTE', label:'A Vencer', bgAtivo:'bg-blue-600 text-white border-blue-600'}, {id:'PAGO', label:'Liquidados', bgAtivo:'bg-green-600 text-white border-green-600'} ];
+        
+        const contasAgrupadas = computed(() => {
+            let filtradas = db.contasReceber;
+            if(estadoFin.filtro !== 'TODOS') filtradas = filtradas.filter(c => c.status === estadoFin.filtro);
+            
+            const map = {};
+            filtradas.forEach(c => {
+                const cid = c.clienteId || 'Avulso';
+                if(!map[cid]) map[cid] = { clienteId: cid, nome: getNomeCliente(cid), total: 0, vendasMap: {} };
+                
+                const vid = c.vendaId;
+                if(!map[cid].vendasMap[vid]) {
+                    const objVenda = db.vendas.find(v => v.id === vid) || { dataHora: new Date().toISOString(), formaPagamento: 'N/A' };
+                    map[cid].vendasMap[vid] = { vendaId: vid, dataHora: objVenda.dataHora, formaPagamento: objVenda.formaPagamento, totalExibido: 0, parcelas: [] };
+                }
+
+                map[cid].vendasMap[vid].parcelas.push(c);
+                map[cid].vendasMap[vid].totalExibido += c.valorAtualizado;
+                map[cid].total += c.valorAtualizado;
+            });
+            
+            return Object.values(map).map(cliente => {
+                cliente.vendas = Object.values(cliente.vendasMap).sort((a,b) => new Date(b.dataHora) - new Date(a.dataHora));
+                cliente.vendas.forEach(v => v.parcelas.sort((p1, p2) => new Date(p1.vencimento) - new Date(p2.vencimento)));
+                delete cliente.vendasMap;
+                return cliente;
+            }).sort((a,b)=>a.nome.localeCompare(b.nome));
+        });
+        
+        const toggleExpand = id => estadoFin.expansao[id] = !estadoFin.expansao[id];
+        const isExpanded = id => !!estadoFin.expansao[id];
+        const toggleExpandVenda = id => estadoFin.expansaoVenda[id] = !estadoFin.expansaoVenda[id];
+        const isVendaExpanded = id => !!estadoFin.expansaoVenda[id];
+
+        const statusStyle = st => st==='PAGO' ? {text:'text-green-600', badge:'bg-green-100 text-green-700 border-green-300'} : st==='ATRASADO' ? {text:'text-red-600', badge:'bg-red-100 text-red-700 border-red-300'} : {text:'text-blue-600', badge:'bg-blue-100 text-blue-700 border-blue-300'};
+        
+        const baixarParcela = async (id) => {
+            const r = await Swal.fire({ title:'Receber Parcela?', icon:'question', showCancelButton:true, confirmButtonText: 'Sim', cancelButtonText: 'Não', confirmButtonColor: '#16a34a', customClass:{popup:'rounded-lg w-[90%] max-w-sm border border-gray-300'} });
+            if(r.isConfirmed) {
+                const c = db.contasReceber.find(x => x.id === id); 
+                if(c) { 
+                    c.status = 'PAGO'; 
+                    c.dataPagamento = new Date().toISOString(); 
+                    LocalDB.salvar();
+                    SyncService.enqueue({ type: 'BAIXAR_PARCELA', id });
+                    swal('OK', 'Parcela baixada (Sincronização em Fila)', 'success');
+                }
+            }
+        };
+
+        const pdv = reactive({ busca:'', carrinho:[], clienteId:'', formaPgto:'a_vista', modalCheckout:false, crediario:{entrada:0, parcelas:1}, desconto: 0 });
+        const opcoesPagamento = [ {id:'a_vista', label:'DINHEIRO/PIX', bgAtivo:'bg-blue-50 border-blue-500 shadow-sm', icon:'ph-money', iconColor:'text-blue-600'}, {id:'cartao_credito', label:'CARTÃO', bgAtivo:'bg-blue-50 border-blue-500 shadow-sm', icon:'ph-credit-card', iconColor:'text-blue-600'}, {id:'parcelado_loja', label:'A PRAZO', bgAtivo:'bg-yellow-100 border-yellow-500 shadow-sm', icon:'ph-notebook', iconColor:'text-yellow-700'} ];
+        const produtosFiltrados = computed(() => pdv.busca.length > 2 ? db.produtos.filter(p => `${p.nome} ${p.codigoBarras}`.toLowerCase().includes(pdv.busca.toLowerCase())) : []);
+        
+        const totalCarrinho = computed(() => pdv.carrinho.reduce((acc, i) => acc + (i.precoVenda * i.quantidade), 0));
+        const totalComDesconto = computed(() => Math.max(0, totalCarrinho.value - (Number(pdv.desconto) || 0))); 
+        
+        const podeFinalizar = computed(() => pdv.carrinho.length > 0 && (pdv.formaPgto !== 'parcelado_loja' || pdv.clienteId !== ''));
+
+        const buscarExato = () => { const p = db.produtos.find(x => x.codigoBarras === pdv.busca.trim()); if(p) { addCarrinho(p); pdv.busca = ''; } };
+        const addCarrinho = p => {
+            if(p.estoque <= 0) return swal('Erro', 'Produto sem estoque.', 'error');
+            const item = pdv.carrinho.find(x => x.id === p.id);
+            if(item) { if(item.quantidade >= p.estoque) swal('Aviso', 'Limite de estoque.', 'warning'); else item.quantidade++; }
+            else pdv.carrinho.push({...p, quantidade:1});
+            pdv.busca = '';
+        };
+        const alterarQtd = (item, dt) => { 
+            const n = item.quantidade + dt; 
+            const p = db.produtos.find(x=>x.id===item.id); 
+            if(n <= 0) return;
+            if(n > p.estoque) return swal('Atenção', 'Estoque indisponível.', 'warning');
+            item.quantidade = n; 
+        };
+        const removerDoCarrinho = (item) => { pdv.carrinho = pdv.carrinho.filter(i => i.id !== item.id); };
+
+        const tocarSomCaixa = () => {
+            try { const som = new Audio('https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3'); som.volume = 0.5; som.play(); } catch(e) {}
+        };
+
+        const impressao = reactive({ ativa: false, dados: null });
+        
+        watch(() => impressao.ativa, (ativa) => {
+            const body = document.body;
+            if (ativa) body.classList.remove('h-screen', 'overflow-hidden');
+            else body.classList.add('h-screen', 'overflow-hidden');
+        });
+
+        const templateTermico = (cfg, d, coreHtml) => `
+            <div style="text-align: center; margin-bottom: 5px;">
+                <strong>${cfg.razaoSocial || 'MERCADO LOCAL'}</strong><br>
+                CNPJ: ${cfg.cnpj || '___'}<br>
+                ${cfg.endereco || ''} - ${cfg.cidadeEStado || ''}<br>
+                Tel: ${cfg.telefone || ''}
+            </div>
+            <div class="cupom-divider"></div>
+            <div style="text-align: center; font-weight: bold; margin: 5px 0;">CUPOM NÃO FISCAL</div>
+            <div style="text-align: center; font-size: 11px; margin-bottom: 5px;">Data: ${formatarDataTime(d.dataHora)} - Doc: ${d.vId ? d.vId.substring(0,8).toUpperCase() : ''}</div>
+            <div class="cupom-divider"></div>
+            ${coreHtml}
+            <div class="cupom-divider"></div>
+            <div style="text-align: center; font-size: 11px; margin-top: 15px;">OBRIGADO PELA PREFERÊNCIA!</div>
+            <div style="text-align: center; font-size: 10px; margin-top: 5px;">Sistema PDV Mobile Offline</div>
+        `;
+
+        // NOVO: Template do contrato que recebe o bloco HTML atualizado abaixo
+        const templateContrato = (cfg, d, coreHtml) => `
+            <div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; font-size: 9pt;">
+                <strong>${cfg.razaoSocial}</strong> - CNPJ: ${cfg.cnpj}<br>
+                Ref. Documento: ${d.vId.substring(0,8).toUpperCase()}
+            </div>
+            ${coreHtml}
+        `;
+
+        const conteudoImpressao = computed(() => {
+            if(!impressao.dados) return '';
+            const d = impressao.dados, cfg = db.configuracao;
+            const foro = cfg.cidadeEStado ? cfg.cidadeEStado.split('-')[0].trim() : '___________';
+            
+            if(d.tipo === 'etiqueta') return `
+                <div style="text-align: center; border: 1px solid #000; padding: 5px;">
+                    <div style="font-weight: bold; font-size: 12px; margin-bottom: 2px;">${d.p.nome.toUpperCase()}</div>
+                    <div style="font-weight: bold; font-size: 18px; margin-bottom: 5px;">${formatarMoeda(d.p.precoVenda)}</div>
+                    <svg id="barcode-svg" style="width: 100%; height: 40px;"></svg>
+                </div>`;
+            
+            if(d.tipo === 'a_vista') {
+                const temDesconto = d.desconto > 0;
+                const htmlItens = `
+                    <table class="cupom-table">
+                        <thead><tr><th>ITEM</th><th class="center">QTDxUN</th><th class="right">TOTAL</th></tr></thead>
+                        <tbody>
+                            ${d.itens.map(i=>`
+                                <tr><td colspan="3">${i.nome.toUpperCase()}</td></tr>
+                                <tr><td></td><td class="center">${i.quantidade}x${i.precoVenda.toFixed(2)}</td><td class="right">${(i.precoVenda*i.quantidade).toFixed(2)}</td></tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <div class="cupom-divider"></div>
+                    <table class="cupom-table" style="font-weight: bold; font-size: 14px;">
+                        <tr><td>SUBTOTAL R$</td><td class="right">${d.total.toFixed(2)}</td></tr>
+                        ${temDesconto ? `<tr><td style="color:red">DESCONTO R$</td><td class="right" style="color:red">-${d.desconto.toFixed(2)}</td></tr>` : ''}
+                        <tr><td style="padding-top:5px; font-size:16px;">LÍQUIDO R$</td><td class="right" style="padding-top:5px; font-size:16px;">${d.totalFinal.toFixed(2)}</td></tr>
+                    </table>
+                    <div style="font-size: 11px; margin-top: 5px;">Pgto: ${d.formaPgto.replace('_',' ').toUpperCase()}</div>
+                    <div style="font-size: 11px;">Cliente: ${d.cliente.nome.toUpperCase()}</div>
+                `;
+                return templateTermico(cfg, d, htmlItens);
+            }
+            
+            // NOVO: Qualificação robusta das partes e dos dados do cliente conforme solicitado
+            const htmlContrato = `
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <h2 style="font-size: 14pt; font-weight: bold; text-transform: uppercase;">Instrumento Particular de Venda</h2>
+                    <p style="font-size: 10pt;">Título Executivo Extrajudicial</p>
+                </div>
+
+                <div class="clausula-title">DADOS DAS PARTES</div>
+                <div class="paragrafo">
+                    <strong>CREDOR:</strong> ${cfg.razaoSocial || 'EMPRESA'}, CNPJ: ${cfg.cnpj || '___'}, sede: ${cfg.endereco || '___'}.<br>
+                    <strong>DEVEDOR:</strong> ${d.cliente.nome || '___________'}, nacionalidade: ${d.cliente.nacionalidade || '___________'}, estado civil: ${d.cliente.estadoCivil || '___________'}, profissão: ${d.cliente.profissao || '___________'}, portador(a) do RG nº ${d.cliente.rg || '___________'} e inscrito(a) no CPF/CNPJ sob o nº ${d.cliente.documento || '___________'}, residente e domiciliado(a) na ${d.cliente.endereco || '_________________________________'}, contato: ${d.cliente.telefone || '___________'}, e-mail: ${d.cliente.email || '___________'}.
+                </div>
+
+                <div class="clausula-title">OBJETO E VALOR</div>
+                <div class="paragrafo">Aquisição dos itens abaixo, perfazendo o total bruto de <strong>${formatarMoeda(d.total)}</strong>${d.desconto > 0 ? `, com bonificação concedida de <strong>${formatarMoeda(d.desconto)}</strong>, resultando no saldo líquido de <strong>${formatarMoeda(d.totalFinal)}</strong>` : ''}.</div>
+                <table class="contrato-table">
+                    <thead><tr><th style="text-align:center">Qtd</th><th>Produto</th><th>Subtotal</th></tr></thead>
+                    <tbody>${d.itens.map(i=>`<tr><td style="text-align:center">${i.quantidade}</td><td>${i.nome}</td><td>${formatarMoeda(i.precoVenda*i.quantidade)}</td></tr>`).join('')}</tbody>
+                </table>
+
+                <div class="clausula-title">CONDIÇÕES DE PAGAMENTO (RECONHECIMENTO DE DÉBITO)</div>
+                <div class="paragrafo">O DEVEDOR confessa dever a quantia supra e compromete-se a pagar conforme cronograma:</div>
+                <table class="contrato-table" style="width: 70%; margin: 1rem auto;">
+                    <thead><tr><th style="text-align:center">Parcela</th><th>Vencimento</th><th>Valor (R$)</th></tr></thead>
+                    <tbody>${d.parcelas.map(p=>`<tr><td style="text-align:center">${p.numeroParcela}</td><td>${formatarDataBR(p.vencimento)}</td><td>${formatarMoeda(p.valor)}</td></tr>`).join('')}</tbody>
+                </table>
+
+                <div style="margin-top: 3rem; text-align: right; margin-bottom: 4rem;">${foro}, ${formatarDataExtenso(new Date(d.dataHora || new Date()))}.</div>
+
+                <div style="display: flex; justify-content: space-around; margin-top: 2rem;">
+                    <div style="width: 40%; text-align: center; border-top: 1px solid #000; padding-top: 5px;"><strong>${cfg.razaoSocial || 'CREDOR'}</strong><br><span style="font-size: 9pt;">CREDOR</span></div>
+                    <div style="width: 40%; text-align: center; border-top: 1px solid #000; padding-top: 5px;"><strong>${d.cliente.nome || 'DEVEDOR'}</strong><br><span style="font-size: 9pt;">DEVEDOR</span></div>
+                </div>
+            `;
+            return templateContrato(cfg, d, htmlContrato);
+        });
+
+        const acionarPrint = () => window.print();
+        const prepararEtiqueta = (p) => {
+            impressao.dados = { tipo: 'etiqueta', p }; impressao.ativa = true;
+            setTimeout(() => {
+                try { JsBarcode("#barcode-svg", p.codigoBarras, {format:"CODE128", width:2, height:40, displayValue:true, margin:0}); setTimeout(() => acionarPrint(), 300); } catch(e) {}
+            }, 100);
+        };
+
+        const reimprimirContrato = (vendaId, clienteId) => {
+            const venda = db.vendas.find(v => v.id === vendaId);
+            if(!venda) return swal('Erro', 'Venda não encontrada.', 'error');
+            
+            const cliente = db.clientes.find(c => c.id === clienteId) || { nome: 'AVULSO', documento: '' };
+            const itens = (db.itensVenda || []).filter(i => i.vendaId === vendaId).map(i => ({ nome: i.nomeProduto, quantidade: i.quantidade, precoVenda: i.precoUnitario }));
+            const parcelas = db.contasReceber.filter(c => c.vendaId === vendaId).sort((a,b) => new Date(a.vencimento) - new Date(b.vencimento)).map(p => ({ numeroParcela: p.numeroParcela, vencimento: p.vencimento, valor: p.valorAtualizado }));
+
+            const valorDesconto = Number(venda.desconto) || 0;
+            const totalBruto = Number(venda.total) + valorDesconto;
+
+            impressao.dados = { tipo: venda.formaPagamento === 'parcelado_loja' ? 'crediario' : 'a_vista', vId: venda.id, dataHora: venda.dataHora, cliente: cliente, itens: itens, total: totalBruto, desconto: valorDesconto, totalFinal: venda.total, parcelas: parcelas, formaPgto: venda.formaPagamento };
+            impressao.ativa = true; setTimeout(() => acionarPrint(), 300);
+        };
+
+        // Lógica de Venda Local Assíncrona
+        const finalizarVenda = () => {
+            const vendaId = gerarUUID();
+            const dataAtual = new Date().toISOString();
+            
+            // 1. Abater Estoque Localmente
+            pdv.carrinho.forEach(item => {
+                const p = db.produtos.find(x => x.id === item.id);
+                if(p) p.estoque -= item.quantidade;
+            });
+
+            // 2. Criar Venda Localmente
+            const clienteIdRef = pdv.clienteId || 'Avulso';
+            const novaVenda = { id: vendaId, dataHora: dataAtual, clienteId: clienteIdRef, total: totalComDesconto.value, desconto: pdv.desconto, formaPagamento: pdv.formaPgto };
+            db.vendas.push(novaVenda);
+            
+            pdv.carrinho.forEach(item => {
+                db.itensVenda.push({ id: gerarUUID(), vendaId, produtoId: item.id, nomeProduto: item.nome, quantidade: item.quantidade, precoUnitario: item.precoVenda, subtotal: item.quantidade * item.precoVenda });
+            });
+
+            // 3. Criar Parcelas Financeiras Localmente
+            const parcelasParaSync = [];
+            if (pdv.formaPgto === 'a_vista') {
+                const p = { id: gerarUUID(), vendaId, clienteId: clienteIdRef, numeroParcela: 'Única', vencimento: dataAtual, valorBase: novaVenda.total, valorAtualizado: novaVenda.total, status: 'PAGO', dataPagamento: dataAtual };
+                db.contasReceber.push(p); parcelasParaSync.push(p);
             } else {
-                btnToggleMic.innerHTML = "🎤 Mic On";
-                btnToggleMic.classList.replace('bg-red-900', 'bg-gray-700');
-            }
-        });
-
-        btnToggleVideo.addEventListener('click', () => {
-            if (!localStream || isScreenSharing) return; // Não mutar vídeo se tiver compartilhando tela
-            isVideoMuted = !isVideoMuted;
-            
-            // Atua em todas as trilhas de vídeo enviadas (gera frame preto/pausado do outro lado)
-            localStream.getVideoTracks().forEach(track => track.enabled = !isVideoMuted);
-            
-            if (isVideoMuted) {
-                btnToggleVideo.innerHTML = "🚫 Cam Off";
-                btnToggleVideo.classList.replace('bg-gray-700', 'bg-red-900');
-                localVideo.classList.add('muted-visual');
-            } else {
-                btnToggleVideo.innerHTML = "📹 Cam On";
-                btnToggleVideo.classList.replace('bg-red-900', 'bg-gray-700');
-                localVideo.classList.remove('muted-visual');
-            }
-        });
-
-        // ==========================================
-        // Captura de Tela (Screen Share)
-        // ==========================================
-        async function startScreenShare() {
-            try {
-                if (!navigator.mediaDevices.getDisplayMedia) {
-                    throw new Error("API bloqueada neste dispositivo (Mobiles não suportam).");
+                let saldo = novaVenda.total;
+                if (pdv.crediario.entrada > 0) {
+                    saldo -= pdv.crediario.entrada;
+                    const pEnt = { id: gerarUUID(), vendaId, clienteId: clienteIdRef, numeroParcela: 'Entrada', vencimento: dataAtual, valorBase: pdv.crediario.entrada, valorAtualizado: pdv.crediario.entrada, status: 'PAGO', dataPagamento: dataAtual };
+                    db.contasReceber.push(pEnt); parcelasParaSync.push(pEnt);
                 }
-
-                screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-                const screenTrack = screenStream.getVideoTracks()[0];
-                
-                screenTrack.onended = () => stopScreenShare();
-
-                localVideo.srcObject = screenStream;
-                localVideo.classList.add('screen-share');
-                localVideo.classList.remove('muted-visual'); // Força visualização
-                
-                if (activeCall && activeCall.peerConnection) {
-                    const sender = activeCall.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-                    if (sender && screenTrack) {
-                        sender.replaceTrack(screenTrack);
+                if (pdv.crediario.parcelas > 0 && saldo > 0) {
+                    const vBase = saldo / pdv.crediario.parcelas;
+                    for (let i = 1; i <= pdv.crediario.parcelas; i++) {
+                        let venc = new Date(dataAtual); venc.setDate(venc.getDate() + (30 * i));
+                        let p = { id: gerarUUID(), vendaId, clienteId: clienteIdRef, numeroParcela: `${i}/${pdv.crediario.parcelas}`, vencimento: venc.toISOString(), valorBase: vBase, valorAtualizado: vBase, status: 'PENDENTE', dataPagamento: '' };
+                        db.contasReceber.push(p); parcelasParaSync.push(p);
                     }
                 }
-
-                isScreenSharing = true;
-                btnShareScreen.classList.replace('bg-purple-600', 'bg-red-600');
-                btnShareScreen.classList.replace('hover:bg-purple-700', 'hover:bg-red-700');
-                btnShareScreen.innerHTML = "❌ Parar Tela";
-                
-                // Desabilita botão de mutar vídeo da câmera durante o share
-                btnToggleVideo.disabled = true;
-                btnToggleVideo.classList.add('opacity-50', 'cursor-not-allowed');
-
-                updateStatus("Transmitindo tela.", 'success');
-            } catch (error) {
-                console.error("Erro no Screen Share:", error);
-                alert(`Compartilhamento falhou: ${error.message}`);
-                stopScreenShare();
-            }
-        }
-
-        async function stopScreenShare() {
-            if (!isScreenSharing) return;
-            
-            if (screenStream) {
-                screenStream.getTracks().forEach(track => track.stop());
-                screenStream = null;
             }
 
-            isScreenSharing = false;
-            btnShareScreen.classList.replace('bg-red-600', 'bg-purple-600');
-            btnShareScreen.classList.replace('hover:bg-red-700', 'hover:bg-purple-700');
-            btnShareScreen.innerHTML = "🖥️ Tela";
-            
-            btnToggleVideo.disabled = false;
-            btnToggleVideo.classList.remove('opacity-50', 'cursor-not-allowed');
-
-            updateStatus("Retornando para a câmera...");
-            await openCamera();
-            updateStatus("Câmera restaurada.");
-        }
-
-        btnShareScreen.addEventListener('click', () => {
-            if (isScreenSharing) stopScreenShare();
-            else startScreenShare();
-        });
-
-        // ==========================================
-        // Lógica: Screen Wake Lock
-        // ==========================================
-        async function toggleWakeLock() {
-            if (!('wakeLock' in navigator)) {
-                alert("Wake Lock API bloqueada no sistema.");
-                return;
-            }
-            try {
-                if (wakeLock !== null) {
-                    await wakeLock.release();
-                    wakeLock = null;
-                    btnToggleWake.classList.replace('bg-green-600', 'bg-yellow-600');
-                    wakeIcon.innerText = '🔓';
-                } else {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    btnToggleWake.classList.replace('bg-yellow-600', 'bg-green-600');
-                    wakeIcon.innerText = '🔒';
-                }
-            } catch (err) {
-                console.error(`Erro Wake Lock: ${err.message}`);
-            }
-        }
-        btnToggleWake.addEventListener('click', toggleWakeLock);
-
-        // ==========================================
-        // Configuração Comum da Chamada P2P
-        // ==========================================
-        function setupCallListeners(call) {
-            activeCall = call;
-
-            call.on('stream', (remoteStream) => {
-                setupRemoteStream(remoteStream);
+            // 4. Salvar tudo local e mandar pra Fila
+            LocalDB.salvar();
+            SyncService.enqueue({
+                type: 'VENDA',
+                payload: { carrinho: pdv.carrinho, total: totalCarrinho.value, desconto: pdv.desconto, clienteId: pdv.clienteId, formaPagamento: pdv.formaPgto, crediario: pdv.crediario, vendaId, dataAtual, parcelasGeradas: parcelasParaSync }
             });
 
-            call.on('close', () => {
-                clearRemoteStream();
-                activeCall = null;
-            });
-            
-            call.on('error', (err) => {
-                console.error("Erro na chamada WebRTC:", err);
-                clearRemoteStream();
-                activeCall = null;
-            });
-        }
+            tocarSomCaixa();
 
-        function initPeer(id = null) {
-            // Injeção da configuração de infraestrutura
-            const options = {
-                debug: 2,
-                config: webrtcConfig
+            const cli = db.clientes.find(c => c.id === pdv.clienteId) || {nome:'AVULSO', documento: ''};
+            
+            // Mapeia para impressão baseando nos dados atuais (antes de limpar)
+            impressao.dados = { 
+                tipo: pdv.formaPgto === 'parcelado_loja' ? 'crediario' : 'a_vista', 
+                vId: vendaId, 
+                dataHora: dataAtual, 
+                cliente: cli, 
+                itens: [...pdv.carrinho], 
+                total: totalCarrinho.value, 
+                desconto: pdv.desconto, 
+                totalFinal: totalComDesconto.value, 
+                parcelas: parcelasParaSync.map(p => ({ numeroParcela: p.numeroParcela, vencimento: p.vencimento, valor: p.valorAtualizado })), 
+                formaPgto: pdv.formaPgto 
             };
-            return id ? new Peer(id, options) : new Peer(options);
-        }
-
-        // ==========================================
-        // Fluxo 1 (Host - Quem gera o PIN)
-        // ==========================================
-        document.getElementById('btn-role-host').addEventListener('click', async () => {
-            isHost = true;
-            roleSelection.classList.add('hidden');
-            roomUi.classList.remove('hidden');
-            roomUi.classList.add('flex');
             
-            wrapperRemote.classList.remove('hidden');
-            remoteLabel.innerText = "Aguardando alguém entrar...";
-
-            const cameraOpened = await openCamera();
-            if (!cameraOpened) return;
-            await getCameras();
-
-            const pin = generatePIN();
-            pinDisplay.innerText = pin;
-            const peerId = `p2p-1to1-pro-${pin}`; 
-
-            updateStatus("Conectando roteador de sinalização (RAM)...");
-            peer = initPeer(peerId);
-
-            peer.on('open', (id) => {
-                updateStatus("Pronto! Envie o PIN e aguarde a conexão nativa.", 'success');
-            });
-
-            peer.on('call', (call) => {
-                const streamToSend = isScreenSharing ? screenStream : localStream;
-                call.answer(streamToSend);
-                setupCallListeners(call);
-            });
-
-            peer.on('error', (err) => {
-                console.error("PeerJS Erro Sinalização:", err);
-                updateStatus(`Erro na Sinalização: ${err.type}`, 'error');
-            });
-
-            if (wakeLock === null) toggleWakeLock();
-        });
-
-        // ==========================================
-        // Fluxo 2 (Viewer - Quem digita o PIN)
-        // ==========================================
-        document.getElementById('btn-role-join').addEventListener('click', async () => {
-            isHost = false;
-            roleSelection.classList.add('hidden');
-            roomUi.classList.remove('hidden');
-            roomUi.classList.add('flex');
+            impressao.ativa = true;
+            Object.assign(pdv, { carrinho:[], clienteId:'', formaPgto:'a_vista', modalCheckout:false, desconto: 0 });
             
-            pinDisplayBlock.classList.add('hidden');
-            pinInputBlock.classList.remove('hidden');
+            setTimeout(() => acionarPrint(), 500); 
+        };
+
+        let html5QrCode = null;
+        const lerCodigoCamera = async (e) => {
+            const file = e.target.files[0]; if(!file) return;
+            state.loading = true; state.loadingMsg = 'Câmera...';
+            try {
+                if(!html5QrCode) html5QrCode = new Html5Qrcode("reader-hidden");
+                const code = await html5QrCode.scanFile(file, true);
+                pdv.busca = code; buscarExato();
+            } catch { swal('Erro', 'Código ilegível na foto.', 'warning'); } 
+            finally { state.loading = false; e.target.value = ''; }
+        };
+
+        return { 
+            state, db, menusDesktop, menusMobile, tituloMobile, viewsCrud, modal, statusCards, statsCards, ultimasVendas, formatarMoeda, formatarDataBR, formatarDataTime, getNomeCliente, isOnline,
+            mudarTela: t => { state.tela = t; window.scrollTo({top:0}); }, abrirModalForm, salvarModal, excluirRegistro, salvarRegistro, 
             
-            wrapperRemote.classList.remove('hidden');
+            forcarSync: async () => { 
+                if (!isOnline.value) return swal('Offline', 'Conecte-se à internet primeiro.', 'info');
+                try {
+                    await SyncService.processQueue(true); 
+                    await SyncService.pull(true); 
+                    if (state.syncQueueSize === 0) {
+                        swal('Sucesso', 'Seu PDV está 100% sincronizado com a nuvem.', 'success');
+                    }
+                } catch(e) {
+                    swal('Falha na Sincronização', e.message, 'error');
+                }
+            },
 
-            const cameraOpened = await openCamera();
-            if (!cameraOpened) return;
-            await getCameras();
-
-            peer = initPeer();
-            
-            peer.on('open', (id) => {
-                updateStatus("Pronto. Digite o PIN para ligar para o host.");
-            });
-
-            peer.on('call', (call) => {
-                const streamToSend = isScreenSharing ? screenStream : localStream;
-                call.answer(streamToSend);
-                setupCallListeners(call);
-            });
-
-            peer.on('error', (err) => {
-                console.error("PeerJS Erro:", err);
-                updateStatus(`Sinalização Falhou. Verifique rede ou PIN.`, 'error');
-                btnConnectRoom.disabled = false;
-                btnConnectRoom.innerText = 'Conectar';
-            });
-        });
-
-        btnConnectRoom.addEventListener('click', () => {
-            const rawPin = viewerPinInput.value.trim().toUpperCase();
-            if (rawPin.length !== 6) {
-                alert("O PIN deve conter exatamente 6 caracteres alfanuméricos.");
-                return;
-            }
-
-            btnConnectRoom.disabled = true;
-            btnConnectRoom.innerText = 'Chamando...';
-            updateStatus("Negociando rotas ICE...");
-
-            const targetPeerId = `p2p-1to1-pro-${rawPin}`;
-
-            const streamToSend = isScreenSharing ? screenStream : localStream;
-            const call = peer.call(targetPeerId, streamToSend);
-            
-            setupCallListeners(call);
-        });
-
-        viewerPinInput.addEventListener('input', (e) => {
-            e.target.value = e.target.value.replace(/[^A-Z0-9]/ig, '').toUpperCase();
-        });
-
-    </script>
+            estadoFin, filtrosFinanceiros, contasAgrupadas, toggleExpand, isExpanded, toggleExpandVenda, isVendaExpanded, statusStyle, baixarParcela, reimprimirContrato, filtrarFinanceiro: f => { estadoFin.filtro = f; state.tela = 'financeiro'; },
+            pdv, opcoesPagamento, produtosFiltrados, totalCarrinho, totalComDesconto, podeFinalizar, buscarExato, addCarrinho, alterarQtd, removerDoCarrinho, finalizarVenda, lerCodigoCamera,
+            impressao, conteudoImpressao, acionarPrint, prepararEtiqueta
+        };
+    }
+}).mount('#app');
+</script>
 </body>
 </html>
-
