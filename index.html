@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>PDV Automação - Offline First</title>
+    <title>PDV Automação - Offline First Pro</title>
     
     <!-- Dependências externas -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,7 +17,6 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* CORREÇÃO APLICADA AQUI: !important impede que o Tailwind force a exibição antes do Vue carregar */
         [v-cloak] { display: none !important; }
         
         .native-feel { 
@@ -33,25 +32,59 @@
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
 
-        /* Estilos de Impressão */
+        /* Estilos de Impressão - Base (Térmica e Contrato) */
         .cupom-termico { font-family: 'Courier New', Courier, monospace; color: black; font-size: 13px; line-height: 1.4; width: 80mm; margin: 0 auto; padding: 5mm; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
         .cupom-divider { border-top: 1px dashed #000; margin: 8px 0; }
         .cupom-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 12px; }
         .cupom-table th, .cupom-table td { padding: 2px 0; text-align: left; vertical-align: top; }
         .cupom-table .right { text-align: right; }
         .cupom-table .center { text-align: center; }
+        
         .documento-juridico { font-family: 'Times New Roman', Times, serif; color: black; font-size: 11pt; line-height: 1.6; width: 210mm; min-height: 297mm; margin: 2rem auto; padding: 20mm; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; }
         .clausula-title { font-weight: bold; margin-top: 1.5rem; margin-bottom: 0.5rem; text-decoration: underline; }
         .contrato-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 10pt; }
         .contrato-table th, .contrato-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; }
         .paragrafo { text-indent: 2cm; text-align: justify; margin-bottom: 0.5rem; }
 
+        /* ========================================================
+           ESTILOS DO CARNÊ BANCÁRIO (Integrado)
+           ======================================================== */
+        .carne-wrapper { width: 210mm; margin: 0 auto; background: #fff; padding-top: 10px; }
+        .carne-item { display: flex; border: 1px solid #000; margin-bottom: 25px; background: #fff; page-break-inside: avoid; font-family: Arial, Helvetica, sans-serif; height: 88mm; box-sizing: border-box; overflow: hidden; }
+        .canhoto { width: 55mm; border-right: 2px dashed #666; display: flex; flex-direction: column; }
+        .corpo { flex: 1; display: flex; flex-direction: column; border-left: 1px solid transparent; }
+        .carne-linha { display: flex; border-bottom: 1px solid #000; width: 100%; }
+        .carne-linha:last-child { border-bottom: none; }
+        .carne-celula { border-right: 1px solid #000; padding: 2px 4px; display: flex; flex-direction: column; justify-content: space-between; min-height: 24px; }
+        .carne-celula:last-child { border-right: none; }
+        .c-flex-grow { flex: 1; }
+        .c-w-fixed { width: 140px; min-width: 140px; }
+        .titulo-celula { font-size: 9px; color: #333; text-transform: uppercase; }
+        .valor-celula { font-size: 12px; font-weight: 500; color: #000; margin-top: 2px; }
+        .destaque-bg { background-color: #e8e8e8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .destaque-txt { font-size: 15px !important; font-weight: 900 !important; text-align: right; color: #000; }
+        .header-doc { display: flex; align-items: center; border-bottom: 2px solid #000; padding: 4px 8px; min-height: 35px; }
+        .banco-logo { font-size: 15px; font-weight: 900; margin-right: 15px; letter-spacing: -0.5px; text-transform: uppercase; max-width: 45%; line-height: 1.1; word-wrap: break-word; }
+        .banco-linha { border-left: 2px solid #000; border-right: 2px solid #000; padding: 0 10px; font-size: 16px; font-weight: bold; margin-right: 10px; }
+        .doc-tipo { font-size: 12px; font-weight: bold; flex: 1; text-align: right; line-height: 1.1; }
+        .area-instrucoes { display: flex; border-bottom: 1px solid #000; flex: 1; }
+        .instrucoes-texto { flex: 1; padding: 4px 6px; border-right: 1px solid #000; font-size: 10px; line-height: 1.4; }
+        .coluna-valores { width: 140px; display: flex; flex-direction: column; }
+        .coluna-valores .carne-celula { border-right: none; border-bottom: 1px solid #000; min-height: 26px; flex: 1; }
+        .coluna-valores .carne-celula:last-child { border-bottom: none; }
+        .rodape-canhoto { padding: 4px; font-size: 9px; text-align: center; border-top: 1px solid #000; margin-top: auto; }
+
         @media print { 
-            @page { margin: 0; }
+            @page { margin: 5mm; size: A4 portrait; }
             html, body, #app, .print-wrapper { height: auto !important; min-height: auto !important; overflow: visible !important; position: static !important; display: block !important; background: white !important; margin: 0 !important; padding: 0 !important; } 
             .no-print { display: none !important; } 
+            
             .cupom-termico { padding: 0 !important; width: 100% !important; max-width: 80mm !important; box-shadow: none !important; margin: 0 !important; border: none !important; }
             .documento-juridico { padding: 15mm !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; box-shadow: none !important; margin: 0 !important; border: none !important; } 
+            
+            /* Impressão estrita do Carnê Bancário 3 por página */
+            .carne-wrapper { width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .carne-item { margin-bottom: 4mm !important; height: 88mm !important; page-break-inside: avoid !important; }
         }
     </style>
 </head>
@@ -67,13 +100,24 @@
         </div>
     </transition>
 
-    <!-- MÓDULO DE IMPRESSÃO -->
+    <!-- MÓDULO DE IMPRESSÃO HÍBRIDO -->
     <div v-if="impressao.ativa" class="print-wrapper min-h-screen bg-gray-300 w-full overflow-y-auto pb-20 z-50 absolute inset-0">
         <div class="no-print sticky top-0 bg-slate-800 p-3 lg:p-4 flex justify-between items-center shadow-md z-50 h-[56px] lg:h-auto">
             <button @click="impressao.ativa = false" class="px-3 h-9 rounded font-bold text-sm transition-colors flex items-center gap-1 bg-slate-700 text-white hover:bg-slate-600"><i class="ph-bold ph-arrow-left"></i> Voltar</button>
             <button @click="acionarPrint" class="px-3 h-9 rounded font-bold text-sm transition-colors flex items-center gap-1 bg-blue-600 text-white hover:bg-blue-700"><i class="ph-bold ph-printer"></i> Imprimir</button>
         </div>
-        <div :class="impressao.dados.tipo === 'a_vista' || impressao.dados.tipo === 'etiqueta' ? 'cupom-termico mt-4 lg:mt-8' : 'documento-juridico'">
+        
+        <!-- Renderização Dinâmica Baseada no Tipo -->
+        <div v-if="impressao.dados.tipo === 'a_vista' || impressao.dados.tipo === 'etiqueta'" class="cupom-termico mt-4 lg:mt-8">
+            <div v-html="conteudoImpressao"></div>
+        </div>
+        <div v-else-if="impressao.dados.tipo === 'carne'" class="carne-wrapper">
+            <div v-html="conteudoImpressao"></div>
+        </div>
+        <div v-else-if="impressao.dados.tipo === 'contrato_carne'" class="w-full bg-white">
+            <div v-html="conteudoImpressao"></div>
+        </div>
+        <div v-else class="documento-juridico">
             <div v-html="conteudoImpressao"></div>
         </div>
     </div>
@@ -86,15 +130,14 @@
             <div class="p-4 text-white font-black text-xl flex flex-col gap-1 border-b border-slate-800 bg-slate-950">
                 <div class="flex items-center gap-2">
                     <i class="ph-fill ph-storefront text-blue-500 text-2xl"></i>
-                    <span class="tracking-tight leading-none uppercase">PDV</span>
+                    <span class="tracking-tight leading-none uppercase">PDV PRO</span>
                 </div>
-                <!-- Indicador de Rede Desktop Atualizado -->
-                <div class="flex items-center gap-1.5 mt-3 text-[10px] uppercase font-bold bg-slate-900/50 p-1.5 rounded border transition-colors" :class="isOnline ? 'text-green-400 border-green-500/20' : 'text-red-400 border-red-500/20'">
-                    <i class="text-sm" :class="isOnline ? 'ph-fill ph-wifi-high' : 'ph-bold ph-wifi-slash'"></i>
-                    <span>{{ isOnline ? 'Online' : 'Offline' }}</span>
-                    
-                    <span v-if="state.syncQueueSize > 0 && !state.syncing" class="bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded text-[9px] ml-auto">{{ state.syncQueueSize }}</span>
-                    <i v-if="state.syncing" class="ph ph-arrows-clockwise animate-spin text-blue-400 text-sm ml-auto"></i>
+                <!-- Indicador de Rede Desktop -->
+                <div class="flex items-center gap-1 mt-2 text-[10px] uppercase font-bold" :class="isOnline ? 'text-green-500' : 'text-red-500'">
+                    <i class="ph-fill" :class="isOnline ? 'ph-wifi-high' : 'ph-wifi-slash'"></i>
+                    {{ isOnline ? 'Online' : 'Offline' }}
+                    <span v-if="state.syncQueueSize > 0" class="text-yellow-400 ml-1">({{ state.syncQueueSize }} pendentes)</span>
+                    <i v-if="state.syncing" class="ph ph-arrows-clockwise animate-spin text-blue-400 ml-1"></i>
                 </div>
             </div>
             <nav class="flex-1 py-2 space-y-1 overflow-y-auto no-scrollbar">
@@ -114,34 +157,21 @@
         </aside>
 
         <!-- APP BAR NATIVO MOBILE -->
-        <header class="lg:hidden bg-slate-900 text-white h-[60px] px-3 flex justify-between items-center shadow-md z-30 shrink-0 w-full relative">
-            <div class="flex items-center gap-2 font-black text-sm tracking-tight uppercase shrink-0">
+        <header class="lg:hidden bg-slate-900 text-white h-[56px] px-3 flex justify-between items-center shadow-md z-30 shrink-0 w-full relative">
+            <div class="flex items-center gap-2 font-black text-base tracking-tight uppercase">
                 <i class="ph-fill ph-storefront text-blue-500 text-xl"></i>
-                <span class="leading-none truncate max-w-[70px] sm:max-w-none">{{ tituloMobile }}</span>
+                <span class="leading-none">{{ tituloMobile }}</span>
             </div>
             
             <div class="flex items-center gap-2">
-                <!-- Novo Indicador de Rede e Botão de Sincronização Mobile Profissional -->
-                <button @click="forcarSync" :disabled="state.syncing" class="flex items-center gap-2 pl-2.5 pr-3 py-1.5 rounded-full border bg-slate-800 transition-all active:scale-95 disabled:opacity-70 disabled:active:scale-100" :class="isOnline ? 'border-green-500/50 shadow-[0_0_8px_rgba(34,197,94,0.15)]' : 'border-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.15)]'" title="Sincronizar Nuvem">
-                    <div class="flex items-center gap-1.5">
-                        <i class="text-base" :class="isOnline ? 'ph-fill ph-wifi-high text-green-400' : 'ph-bold ph-wifi-slash text-red-400'"></i>
-                        <span class="text-[10px] font-bold uppercase tracking-wider" :class="isOnline ? 'text-green-400' : 'text-red-400'">
-                            {{ isOnline ? 'Online' : 'Offline' }}
-                        </span>
-                    </div>
-                    
-                    <div class="h-4 w-[1px] bg-slate-600"></div>
-                    
-                    <div class="relative flex items-center justify-center">
-                        <i class="text-lg text-blue-400" :class="state.syncing ? 'ph-bold ph-arrows-clockwise animate-spin' : 'ph-bold ph-cloud-arrow-up'"></i>
-                        <span v-if="state.syncQueueSize > 0" class="absolute -top-2 -right-2.5 bg-yellow-400 text-slate-900 text-[9px] font-black h-4 min-w-[16px] px-1 flex items-center justify-center rounded-full shadow-sm">
-                            {{ state.syncQueueSize }}
-                        </span>
-                    </div>
+                <!-- Indicador Rede Mobile -->
+                <button @click="forcarSync" class="flex items-center justify-center p-1" :class="isOnline ? 'text-green-400' : 'text-red-400'" title="Status da Rede">
+                    <i v-if="state.syncing" class="ph ph-arrows-clockwise animate-spin text-blue-400 text-xl"></i>
+                    <i v-else class="ph-fill text-xl" :class="isOnline ? 'ph-wifi-high' : 'ph-wifi-slash'"></i>
+                    <span v-if="state.syncQueueSize > 0" class="absolute top-1 right-20 bg-yellow-500 text-black text-[8px] font-bold px-1 rounded-full">{{ state.syncQueueSize }}</span>
                 </button>
-
-                <button v-if="state.tela !== 'pdv'" @click="mudarTela('pdv')" class="h-9 w-9 flex items-center justify-center rounded-md font-bold transition-colors bg-blue-600 text-white hover:bg-blue-700 shadow-sm"><i class="ph ph-barcode text-lg"></i></button>
-                <button @click="mudarTela('config')" class="h-9 w-9 flex items-center justify-center rounded-md font-bold transition-colors bg-slate-800 text-slate-300 hover:text-white border border-slate-700 shadow-sm active:bg-slate-700"><i class="ph-bold ph-gear text-xl"></i></button>
+                <button v-if="state.tela !== 'pdv'" @click="mudarTela('pdv')" class="h-9 w-9 flex items-center justify-center rounded-md font-bold transition-colors bg-blue-600 text-white hover:bg-blue-700"><i class="ph ph-barcode text-lg"></i></button>
+                <button @click="mudarTela('config')" class="h-9 w-9 flex items-center justify-center rounded-md font-bold transition-colors bg-slate-800 text-slate-300 hover:text-white"><i class="ph-bold ph-gear text-lg"></i></button>
             </div>
         </header>
 
@@ -261,7 +291,61 @@
                 </div>
             </section>
 
-            <!-- Telas Menores (CRUDs) -->
+            <!-- TELA: GERADOR DE CARNÊ (AVULSO) -->
+            <section v-show="state.tela === 'gerador_carne'" class="max-w-3xl mx-auto w-full space-y-4">
+                <div class="bg-white p-4 lg:p-6 rounded shadow-sm border border-gray-200">
+                    <h2 class="text-lg lg:text-xl font-black text-gray-800 uppercase flex items-center gap-2 mb-4">
+                        <i class="ph-bold ph-book-bookmark text-blue-600 text-2xl"></i> Emissão de Carnê Avulso
+                    </h2>
+                    
+                    <div class="bg-blue-50 border border-blue-200 rounded p-3 lg:p-4 mb-4 text-xs lg:text-sm text-blue-800 leading-relaxed">
+                        Os dados da empresa (Emissor) já estão configurados baseados no perfil do PDV. 
+                        Ajuste os percentuais de <strong>Multa</strong> e <strong>Juros</strong> na tela de <strong>Ajustes</strong> se necessário.
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Seleção Dinâmica do Cliente -->
+                        <div class="md:col-span-2 bg-gray-50 border border-gray-200 p-3 lg:p-4 rounded flex flex-col gap-2">
+                            <label class="block text-[10px] lg:text-xs font-bold text-gray-600 uppercase">1. Importar do Cadastro ou Digitar Avulso</label>
+                            <select v-model="estadoCarne.clienteSelecionado" @change="importarClienteCarne" class="w-full h-10 lg:h-12 px-3 border border-gray-300 rounded outline-none focus:border-blue-500 bg-white text-sm font-bold text-blue-700">
+                                <option value="">-- Digitar Manualmente Abaixo --</option>
+                                <option v-for="c in db.clientes" :key="c.id" :value="c.id">{{ c.nome }} ({{ c.documento || 'Sem DOC' }})</option>
+                            </select>
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] lg:text-xs font-bold text-gray-600 uppercase mb-1">Nome Completo do Cliente *</label>
+                            <input type="text" v-model="estadoCarne.cliente" class="w-full h-10 lg:h-12 px-3 border border-gray-300 rounded outline-none focus:border-blue-500 bg-gray-50 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] lg:text-xs font-bold text-gray-600 uppercase mb-1">CPF/CNPJ do Cliente</label>
+                            <input type="text" v-model="estadoCarne.documento" class="w-full h-10 lg:h-12 px-3 border border-gray-300 rounded outline-none focus:border-blue-500 bg-gray-50 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] lg:text-xs font-bold text-gray-600 uppercase mb-1">Valor Total da Dívida/Venda (R$) *</label>
+                            <input type="number" step="0.01" min="0" v-model="estadoCarne.valorTotal" class="w-full h-10 lg:h-12 px-3 border border-gray-300 rounded outline-none focus:border-blue-500 bg-gray-50 text-sm font-bold text-blue-700">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] lg:text-xs font-bold text-gray-600 uppercase mb-1">Quantidade de Parcelas *</label>
+                            <input type="number" min="1" max="120" v-model="estadoCarne.parcelas" class="w-full h-10 lg:h-12 px-3 border border-gray-300 rounded outline-none focus:border-blue-500 bg-gray-50 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] lg:text-xs font-bold text-gray-600 uppercase mb-1">Vencimento da 1ª Parcela *</label>
+                            <input type="date" v-model="estadoCarne.vencimento" class="w-full h-10 lg:h-12 px-3 border border-gray-300 rounded outline-none focus:border-blue-500 bg-gray-50 text-sm">
+                        </div>
+                    </div>
+
+                    <div class="mt-6 p-4 bg-gray-100 rounded border border-gray-200 text-center font-bold text-sm lg:text-base text-gray-700 uppercase">
+                        {{ previaCarne }}
+                    </div>
+
+                    <button @click="gerarCarneAvulso" class="w-full mt-4 h-12 lg:h-14 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase rounded shadow-sm transition-colors flex items-center justify-center gap-2">
+                        <i class="ph-bold ph-printer text-xl"></i> Gerar e Imprimir Carnês
+                    </button>
+                </div>
+            </section>
+
+            <!-- Telas Menores (CRUDs e Ajustes) -->
             <template v-for="crud in viewsCrud" :key="crud.id">
                 <section v-show="state.tela === crud.id" class="max-w-7xl mx-auto w-full space-y-3 lg:space-y-6">
                     <div class="flex flex-row justify-between items-center bg-white p-3 lg:p-4 rounded shadow-sm border border-gray-200">
@@ -347,7 +431,12 @@
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <span class="font-bold text-[11px] text-gray-800">{{ formatarMoeda(venda.totalExibido) }}</span>
-                                        <button @click.stop="reimprimirContrato(venda.vendaId, grupo.clienteId)" class="p-1 rounded bg-white border border-gray-300 text-gray-600 active:bg-gray-200"><i class="ph-bold ph-printer"></i></button>
+                                        
+                                        <!-- BOTÃO GERADOR DE CARNÊ INTEGRADO À VENDA REAL -->
+                                        <button v-if="venda.formaPagamento === 'parcelado_loja'" @click.stop="imprimirCarneDaVenda(venda.vendaId, grupo.clienteId)" class="p-1 rounded bg-white border border-gray-300 text-blue-600 active:bg-blue-100" title="Imprimir Carnê"><i class="ph-bold ph-book-bookmark"></i></button>
+                                        
+                                        <button @click.stop="reimprimirContrato(venda.vendaId, grupo.clienteId)" class="p-1 rounded bg-white border border-gray-300 text-gray-600 active:bg-gray-200" title="Imprimir Contrato Térmico/A4"><i class="ph-bold ph-printer"></i></button>
+                                        
                                         <i class="ph-bold ph-caret-down text-gray-400" :class="{'rotate-180': isVendaExpanded(venda.vendaId)}"></i>
                                     </div>
                                 </div>
@@ -622,44 +711,52 @@ createApp({
 
         // =========================================================================
 
+        const statusCards = computed(() => {
+            let s = { recHoje:0, aRecHoje:0, atraso:0, atrasoQtd:0, vendasHojeBruto:0, qtdVendasHoje:0 };
+            const isHoje = (isoString) => {
+                if (!isoString) return false;
+                const d = new Date(isoString); const hj = new Date();
+                return d.getDate() === hj.getDate() && d.getMonth() === hj.getMonth() && d.getFullYear() === hj.getFullYear();
+            };
+            db.contasReceber.forEach(c => {
+                if(c.status==='PAGO' && isHoje(c.dataPagamento)) s.recHoje += c.valorAtualizado;
+                if(c.status==='PENDENTE' && isHoje(c.vencimento)) s.aRecHoje += c.valorAtualizado;
+                if(c.status==='ATRASADO') { s.atraso += c.valorAtualizado; s.atrasoQtd++; }
+            });
+            db.vendas.forEach(v => {
+                if(isHoje(v.dataHora)) { s.vendasHojeBruto += v.total; s.qtdVendasHoje++; }
+            });
+            return s;
+        });
+
+        // =========================================================================
+        // MENUS E CONFIGURAÇÕES DE VIEWS (Atualizado para Carnê)
+        // =========================================================================
+
         const menusDesktop = [
             { id: 'pdv', label: 'CAIXA (F2)', icon: 'ph-shopping-cart' },
             { id: 'dashboard', label: 'PAINEL BI', icon: 'ph-chart-bar' },
             { id: 'clientes', label: 'CLIENTES', icon: 'ph-users' },
             { id: 'produtos', label: 'ESTOQUE', icon: 'ph-package' },
-            { id: 'financeiro', label: 'FINANCEIRO', icon: 'ph-currency-dollar', badge: () => statusCards.value.atrasoQtd }
+            { id: 'financeiro', label: 'FINANCEIRO', icon: 'ph-currency-dollar', badge: () => statusCards.value.atrasoQtd },
+            { id: 'gerador_carne', label: 'GERAR CARNÊS', icon: 'ph-book-bookmark' }
         ];
 
         const menusMobile = [
             { id: 'dashboard', label: 'Início', icon: 'ph-house' },
             { id: 'produtos', label: 'Estoque', icon: 'ph-package' },
             { id: 'pdv', label: 'Caixa', icon: 'ph-barcode' },
-            { id: 'clientes', label: 'Clientes', icon: 'ph-users' },
-            { id: 'financeiro', label: 'Contas', icon: 'ph-currency-dollar', badge: () => statusCards.value.atrasoQtd }
+            { id: 'financeiro', label: 'Contas', icon: 'ph-currency-dollar', badge: () => statusCards.value.atrasoQtd },
+            { id: 'gerador_carne', label: 'Carnês', icon: 'ph-book-bookmark' }
         ];
 
         const tituloMobile = computed(() => {
             const current = [...menusDesktop, {id:'config', label:'Ajustes'}].find(m => m.id === state.tela);
-            return current ? current.label.replace(' (F2)','') : 'PDV';
-        });
-
-        onMounted(() => {
-            LocalDB.carregar();
-            SyncService.atualizarSize();
-            
-            if (isOnline.value) {
-                SyncService.pull(false).then(() => SyncService.processQueue(false));
-            }
-
-            window.addEventListener('keydown', (e) => {
-                if (e.key === 'F2') { e.preventDefault(); state.tela = 'pdv'; }
-                if (e.key === 'F3' && state.tela === 'pdv' && podeFinalizar.value) { e.preventDefault(); pdv.modalCheckout = true; }
-            });
+            return current ? current.label.replace(' (F2)','') : 'PDV PRO';
         });
 
         const configProduto = [ { id: 'codigoBarras', label: 'Cód. Barras/EAN', type: 'text', colClass: 'col-span-1' }, { id: 'nome', label: 'Descrição *', type: 'text', colClass: 'col-span-1 md:col-span-1' }, { id: 'precoCusto', label: 'Custo R$', type: 'number', colClass: 'col-span-1' }, { id: 'precoVenda', label: 'Venda R$ *', type: 'number', colClass: 'col-span-1' }, { id: 'estoque', label: 'Qtd. Estoque', type: 'number', colClass: 'md:col-span-2' } ];
         
-        // NOVO: Array de Configuração para o formulário de cliente (CRUD) expandido
         const configCliente = [ 
             { id: 'documento', label: 'CPF/CNPJ *', type: 'text', colClass: 'col-span-1 md:col-span-1' },
             { id: 'rg', label: 'RG', type: 'text', colClass: 'col-span-1 md:col-span-1' },
@@ -679,9 +776,20 @@ createApp({
                 {label:'Estoque', key:'estoque', class:'text-center font-mono', classH:'text-center', formatHtml: (val) => val <= 5 ? `<span class="bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded text-[10px] border border-red-200" title="Estoque Mínimo">${val}</span>` : `<span class="font-bold text-gray-700">${val}</span>` }, 
                 {label:'Pr. Venda', key:'precoVenda', class:'font-bold text-blue-700 text-right', classH:'text-right', format: formatarMoeda} 
             ] },
-            { id: 'config', titulo: 'Dados da Loja', colecao: 'configuracao', temLista: false, formConfig: [ {id:'razaoSocial', label:'Nome Fantasia *', type:'text'}, {id:'cnpj', label:'CNPJ/CPF *', type:'text', colClass:'col-span-1'}, {id:'telefone', label:'Telefone', type:'text', colClass:'col-span-1'}, {id:'endereco', label:'Endereço *', type:'text'}, {id:'cidadeEStado', label:'Cidade - UF *', type:'text'}, ] }
+            { id: 'config', titulo: 'Dados da Loja', colecao: 'configuracao', temLista: false, formConfig: [ 
+                {id:'razaoSocial', label:'Nome Fantasia *', type:'text'}, 
+                {id:'cnpj', label:'CNPJ/CPF *', type:'text', colClass:'col-span-1'}, 
+                {id:'telefone', label:'Telefone', type:'text', colClass:'col-span-1'}, 
+                {id:'endereco', label:'Endereço *', type:'text'}, 
+                {id:'cidadeEStado', label:'Cidade - UF *', type:'text'},
+                {id:'multa', label:'Multa Atraso (%)', type:'number', colClass:'col-span-1'}, 
+                {id:'juros', label:'Juros Mensal (%)', type:'number', colClass:'col-span-1'}
+            ]}
         ];
 
+        // =========================================================================
+        // ESTADO GLOBAL / CRUDS
+        // =========================================================================
         const modal = reactive({ aberto: false, config: null, dados: {} });
         const abrirModalForm = (crudConfig, registro = null) => { modal.config = crudConfig; modal.dados = registro ? { ...registro } : {}; modal.aberto = true; };
         
@@ -712,25 +820,6 @@ createApp({
             }
         };
 
-        const isHoje = (isoString) => {
-            if (!isoString) return false;
-            const d = new Date(isoString); const hj = new Date();
-            return d.getDate() === hj.getDate() && d.getMonth() === hj.getMonth() && d.getFullYear() === hj.getFullYear();
-        };
-
-        const statusCards = computed(() => {
-            let s = { recHoje:0, aRecHoje:0, atraso:0, atrasoQtd:0, vendasHojeBruto:0, qtdVendasHoje:0 };
-            db.contasReceber.forEach(c => {
-                if(c.status==='PAGO' && isHoje(c.dataPagamento)) s.recHoje += c.valorAtualizado;
-                if(c.status==='PENDENTE' && isHoje(c.vencimento)) s.aRecHoje += c.valorAtualizado;
-                if(c.status==='ATRASADO') { s.atraso += c.valorAtualizado; s.atrasoQtd++; }
-            });
-            db.vendas.forEach(v => {
-                if(isHoje(v.dataHora)) { s.vendasHojeBruto += v.total; s.qtdVendasHoje++; }
-            });
-            return s;
-        });
-
         const statsCards = computed(() => [ 
             { id: 'VENDAS', label: 'Faturamento Hoje', value: statusCards.value.vendasHojeBruto, borderClass: 'border-l-[3px] border-l-blue-500', textClass: 'text-blue-700', icon: 'ph-fill ph-shopping-cart' }, 
             { id: 'TICKET', label: 'Ticket Médio', value: statusCards.value.vendasHojeBruto > 0 ? (statusCards.value.vendasHojeBruto / statusCards.value.qtdVendasHoje) : 0, borderClass: 'border-l-[3px] border-l-purple-500', textClass: 'text-purple-700', icon: 'ph-fill ph-chart-polar' }, 
@@ -741,6 +830,9 @@ createApp({
         const getNomeCliente = id => { const c = db.clientes.find(x => x.id === id); return c ? c.nome : 'AVULSO'; };
         const ultimasVendas = computed(() => [...db.vendas].reverse().slice(0,6));
 
+        // =========================================================================
+        // MÓDULO FINANCEIRO
+        // =========================================================================
         const estadoFin = reactive({ filtro: 'TODOS', expansao: {}, expansaoVenda: {} });
         const filtrosFinanceiros = [ {id:'TODOS', label:'Todos', bgAtivo:'bg-slate-800 text-white border-slate-800'}, {id:'ATRASADO', label:'Atrasado', bgAtivo:'bg-red-600 text-white border-red-600'}, {id:'PENDENTE', label:'A Vencer', bgAtivo:'bg-blue-600 text-white border-blue-600'}, {id:'PAGO', label:'Liquidados', bgAtivo:'bg-green-600 text-white border-green-600'} ];
         
@@ -793,13 +885,15 @@ createApp({
             }
         };
 
+        // =========================================================================
+        // MÓDULO PDV (Caixa)
+        // =========================================================================
         const pdv = reactive({ busca:'', carrinho:[], clienteId:'', formaPgto:'a_vista', modalCheckout:false, crediario:{entrada:0, parcelas:1}, desconto: 0 });
         const opcoesPagamento = [ {id:'a_vista', label:'DINHEIRO/PIX', bgAtivo:'bg-blue-50 border-blue-500 shadow-sm', icon:'ph-money', iconColor:'text-blue-600'}, {id:'cartao_credito', label:'CARTÃO', bgAtivo:'bg-blue-50 border-blue-500 shadow-sm', icon:'ph-credit-card', iconColor:'text-blue-600'}, {id:'parcelado_loja', label:'A PRAZO', bgAtivo:'bg-yellow-100 border-yellow-500 shadow-sm', icon:'ph-notebook', iconColor:'text-yellow-700'} ];
         const produtosFiltrados = computed(() => pdv.busca.length > 2 ? db.produtos.filter(p => `${p.nome} ${p.codigoBarras}`.toLowerCase().includes(pdv.busca.toLowerCase())) : []);
         
         const totalCarrinho = computed(() => pdv.carrinho.reduce((acc, i) => acc + (i.precoVenda * i.quantidade), 0));
         const totalComDesconto = computed(() => Math.max(0, totalCarrinho.value - (Number(pdv.desconto) || 0))); 
-        
         const podeFinalizar = computed(() => pdv.carrinho.length > 0 && (pdv.formaPgto !== 'parcelado_loja' || pdv.clienteId !== ''));
 
         const buscarExato = () => { const p = db.produtos.find(x => x.codigoBarras === pdv.busca.trim()); if(p) { addCarrinho(p); pdv.busca = ''; } };
@@ -819,118 +913,191 @@ createApp({
         };
         const removerDoCarrinho = (item) => { pdv.carrinho = pdv.carrinho.filter(i => i.id !== item.id); };
 
-        const tocarSomCaixa = () => {
-            try { const som = new Audio('https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3'); som.volume = 0.5; som.play(); } catch(e) {}
+        const tocarSomCaixa = () => { try { const som = new Audio('https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3'); som.volume = 0.5; som.play(); } catch(e) {} };
+
+        let html5QrCode = null;
+        const lerCodigoCamera = async (e) => {
+            const file = e.target.files[0]; if(!file) return;
+            state.loading = true; state.loadingMsg = 'Câmera...';
+            try {
+                if(!html5QrCode) html5QrCode = new Html5Qrcode("reader-hidden");
+                const code = await html5QrCode.scanFile(file, true);
+                pdv.busca = code; buscarExato();
+            } catch { swal('Erro', 'Código ilegível na foto.', 'warning'); } 
+            finally { state.loading = false; e.target.value = ''; }
         };
 
+        const finalizarVenda = () => {
+            const vendaId = gerarUUID();
+            const dataAtual = new Date().toISOString();
+            
+            // Abater Estoque
+            pdv.carrinho.forEach(item => { const p = db.produtos.find(x => x.id === item.id); if(p) p.estoque -= item.quantidade; });
+
+            // Criar Venda Local
+            const clienteIdRef = pdv.clienteId || 'Avulso';
+            const novaVenda = { id: vendaId, dataHora: dataAtual, clienteId: clienteIdRef, total: totalComDesconto.value, desconto: pdv.desconto, formaPagamento: pdv.formaPgto };
+            db.vendas.push(novaVenda);
+            
+            pdv.carrinho.forEach(item => {
+                db.itensVenda.push({ id: gerarUUID(), vendaId, produtoId: item.id, nomeProduto: item.nome, quantidade: item.quantidade, precoUnitario: item.precoVenda, subtotal: item.quantidade * item.precoVenda });
+            });
+
+            // Criar Parcelas
+            const parcelasParaSync = [];
+            if (pdv.formaPgto === 'a_vista') {
+                const p = { id: gerarUUID(), vendaId, clienteId: clienteIdRef, numeroParcela: 'Única', vencimento: dataAtual, valorBase: novaVenda.total, valorAtualizado: novaVenda.total, status: 'PAGO', dataPagamento: dataAtual };
+                db.contasReceber.push(p); parcelasParaSync.push(p);
+            } else {
+                let saldo = novaVenda.total;
+                if (pdv.crediario.entrada > 0) {
+                    saldo -= pdv.crediario.entrada;
+                    const pEnt = { id: gerarUUID(), vendaId, clienteId: clienteIdRef, numeroParcela: 'Entrada', vencimento: dataAtual, valorBase: pdv.crediario.entrada, valorAtualizado: pdv.crediario.entrada, status: 'PAGO', dataPagamento: dataAtual };
+                    db.contasReceber.push(pEnt); parcelasParaSync.push(pEnt);
+                }
+                if (pdv.crediario.parcelas > 0 && saldo > 0) {
+                    const vBase = saldo / pdv.crediario.parcelas;
+                    for (let i = 1; i <= pdv.crediario.parcelas; i++) {
+                        let venc = new Date(dataAtual); venc.setDate(venc.getDate() + (30 * i));
+                        let p = { id: gerarUUID(), vendaId, clienteId: clienteIdRef, numeroParcela: `${i}/${pdv.crediario.parcelas}`, vencimento: venc.toISOString(), valorBase: vBase, valorAtualizado: vBase, status: 'PENDENTE', dataPagamento: '' };
+                        db.contasReceber.push(p); parcelasParaSync.push(p);
+                    }
+                }
+            }
+
+            LocalDB.salvar();
+            SyncService.enqueue({
+                type: 'VENDA',
+                payload: { carrinho: pdv.carrinho, total: totalCarrinho.value, desconto: pdv.desconto, clienteId: pdv.clienteId, formaPagamento: pdv.formaPgto, crediario: pdv.crediario, vendaId, dataAtual, parcelasGeradas: parcelasParaSync }
+            });
+
+            tocarSomCaixa();
+            const cli = db.clientes.find(c => c.id === pdv.clienteId) || {nome:'AVULSO', documento: ''};
+            
+            // INTEGRAÇÃO: Se for a prazo, agora manda gerar "Contrato + Carnê"
+            const tipoImpressaoFinal = pdv.formaPgto === 'parcelado_loja' ? 'contrato_carne' : 'a_vista';
+            
+            impressao.dados = { 
+                tipo: tipoImpressaoFinal, 
+                vId: vendaId, 
+                dataHora: dataAtual, 
+                cliente: cli, 
+                itens: [...pdv.carrinho], 
+                total: totalCarrinho.value, 
+                desconto: pdv.desconto, 
+                totalFinal: totalComDesconto.value, 
+                parcelas: parcelasParaSync.map(p => ({ numeroParcela: p.numeroParcela, vencimento: p.vencimento, valor: p.valorAtualizado })), 
+                formaPgto: pdv.formaPgto 
+            };
+            
+            impressao.ativa = true;
+            Object.assign(pdv, { carrinho:[], clienteId:'', formaPgto:'a_vista', modalCheckout:false, desconto: 0 });
+            setTimeout(() => acionarPrint(), 500); 
+        };
+
+        // =========================================================================
+        // GERADOR DE CARNÊ (Motor Bancário e Estado)
+        // =========================================================================
+        const estadoCarne = reactive({ clienteSelecionado: '', cliente: '', documento: '', valorTotal: 0, parcelas: 1, vencimento: new Date().toISOString().split('T')[0] });
+
+        const importarClienteCarne = () => {
+            if (estadoCarne.clienteSelecionado) {
+                const c = db.clientes.find(x => x.id === estadoCarne.clienteSelecionado);
+                if (c) {
+                    estadoCarne.cliente = c.nome;
+                    estadoCarne.documento = c.documento;
+                }
+            } else {
+                estadoCarne.cliente = '';
+                estadoCarne.documento = '';
+            }
+        };
+
+        const previaCarne = computed(() => {
+            const t = Number(estadoCarne.valorTotal) || 0;
+            const q = Number(estadoCarne.parcelas) || 1;
+            if(t <= 0) return 'Prévia: 0 parcelas de R$ 0,00';
+            return `Prévia: ${q} parcelas de R$ ${(t/q).toFixed(2).replace('.',',')}`;
+        });
+
+        const gerarCarneAvulso = () => {
+            if(!estadoCarne.cliente || !estadoCarne.valorTotal || !estadoCarne.vencimento) {
+                return swal('Aviso', 'Preencha Nome, Valor e Data de Vencimento.', 'warning');
+            }
+
+            const total = Number(estadoCarne.valorTotal);
+            const qtd = Number(estadoCarne.parcelas);
+            const valorBase = Math.floor((total / qtd) * 100) / 100;
+            const resto = parseFloat((total - (valorBase * qtd)).toFixed(2));
+            const dataEmissao = new Date().toLocaleDateString('pt-BR');
+            
+            const parcelasParaImp = [];
+
+            for (let i = 1; i <= qtd; i++) {
+                let vFinal = (i === qtd) ? (valorBase + resto) : valorBase;
+                let dataVenc = new Date(estadoCarne.vencimento + 'T00:00:00');
+                dataVenc.setMonth(dataVenc.getMonth() + (i - 1));
+
+                parcelasParaImp.push({
+                    numStr: `${i}/${qtd}`,
+                    vencimento: dataVenc.toISOString(),
+                    valor: vFinal,
+                    valorTotalVenda: total,
+                    dataEmissao: dataEmissao,
+                    idUnico: Math.floor(Math.random() * 90000) + 10000, 
+                    clienteNome: estadoCarne.cliente,
+                    clienteDoc: estadoCarne.documento || '---'
+                });
+            }
+
+            impressao.dados = { tipo: 'carne', parcelas: parcelasParaImp };
+            impressao.ativa = true;
+            setTimeout(() => acionarPrint(), 300);
+        };
+
+        const imprimirCarneDaVenda = (vendaId, clienteId) => {
+            const venda = db.vendas.find(v => v.id === vendaId);
+            const cliente = db.clientes.find(c => c.id === clienteId) || { nome: 'AVULSO', documento: '' };
+            const contas = db.contasReceber.filter(c => c.vendaId === vendaId && c.status !== 'CANCELADA').sort((a,b) => new Date(a.vencimento) - new Date(b.vencimento));
+
+            if(contas.length === 0) return swal('Erro', 'Não há parcelas ativas para esta venda.', 'error');
+
+            const dataEmissao = new Date(venda.dataHora).toLocaleDateString('pt-BR');
+            
+            const parcelasParaImp = contas.map((c, index) => {
+                const isEntrada = c.numeroParcela === 'Entrada';
+                const qtdValidas = contas.filter(x => x.numeroParcela !== 'Entrada').length;
+                let strNum = c.numeroParcela;
+                if (!strNum.includes('/') && !isEntrada) { strNum = `${index + (contas.find(x => x.numeroParcela==='Entrada') ? 0 : 1)}/${qtdValidas}`; }
+
+                return {
+                    numStr: strNum,
+                    vencimento: c.vencimento,
+                    valor: c.valorAtualizado,
+                    valorTotalVenda: venda.total,
+                    dataEmissao: dataEmissao,
+                    idUnico: c.id.substring(0,6).toUpperCase(),
+                    clienteNome: cliente.nome,
+                    clienteDoc: cliente.documento || '---'
+                };
+            });
+
+            impressao.dados = { tipo: 'carne', parcelas: parcelasParaImp };
+            impressao.ativa = true;
+            setTimeout(() => acionarPrint(), 300);
+        };
+
+        // =========================================================================
+        // MOTOR DE IMPRESSÃO HÍBRIDO (Contratos, Térmicas e Carnês)
+        // =========================================================================
         const impressao = reactive({ ativa: false, dados: null });
-        
         watch(() => impressao.ativa, (ativa) => {
             const body = document.body;
             if (ativa) body.classList.remove('h-screen', 'overflow-hidden');
             else body.classList.add('h-screen', 'overflow-hidden');
         });
-
-        const templateTermico = (cfg, d, coreHtml) => `
-            <div style="text-align: center; margin-bottom: 5px;">
-                <strong>${cfg.razaoSocial || 'MERCADO LOCAL'}</strong><br>
-                CNPJ: ${cfg.cnpj || '___'}<br>
-                ${cfg.endereco || ''} - ${cfg.cidadeEStado || ''}<br>
-                Tel: ${cfg.telefone || ''}
-            </div>
-            <div class="cupom-divider"></div>
-            <div style="text-align: center; font-weight: bold; margin: 5px 0;">CUPOM NÃO FISCAL</div>
-            <div style="text-align: center; font-size: 11px; margin-bottom: 5px;">Data: ${formatarDataTime(d.dataHora)} - Doc: ${d.vId ? d.vId.substring(0,8).toUpperCase() : ''}</div>
-            <div class="cupom-divider"></div>
-            ${coreHtml}
-            <div class="cupom-divider"></div>
-            <div style="text-align: center; font-size: 11px; margin-top: 15px;">OBRIGADO PELA PREFERÊNCIA!</div>
-            <div style="text-align: center; font-size: 10px; margin-top: 5px;">Sistema PDV Mobile Offline</div>
-        `;
-
-        // NOVO: Template do contrato que recebe o bloco HTML atualizado abaixo
-        const templateContrato = (cfg, d, coreHtml) => `
-            <div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; font-size: 9pt;">
-                <strong>${cfg.razaoSocial}</strong> - CNPJ: ${cfg.cnpj}<br>
-                Ref. Documento: ${d.vId.substring(0,8).toUpperCase()}
-            </div>
-            ${coreHtml}
-        `;
-
-        const conteudoImpressao = computed(() => {
-            if(!impressao.dados) return '';
-            const d = impressao.dados, cfg = db.configuracao;
-            const foro = cfg.cidadeEStado ? cfg.cidadeEStado.split('-')[0].trim() : '___________';
-            
-            if(d.tipo === 'etiqueta') return `
-                <div style="text-align: center; border: 1px solid #000; padding: 5px;">
-                    <div style="font-weight: bold; font-size: 12px; margin-bottom: 2px;">${d.p.nome.toUpperCase()}</div>
-                    <div style="font-weight: bold; font-size: 18px; margin-bottom: 5px;">${formatarMoeda(d.p.precoVenda)}</div>
-                    <svg id="barcode-svg" style="width: 100%; height: 40px;"></svg>
-                </div>`;
-            
-            if(d.tipo === 'a_vista') {
-                const temDesconto = d.desconto > 0;
-                const htmlItens = `
-                    <table class="cupom-table">
-                        <thead><tr><th>ITEM</th><th class="center">QTDxUN</th><th class="right">TOTAL</th></tr></thead>
-                        <tbody>
-                            ${d.itens.map(i=>`
-                                <tr><td colspan="3">${i.nome.toUpperCase()}</td></tr>
-                                <tr><td></td><td class="center">${i.quantidade}x${i.precoVenda.toFixed(2)}</td><td class="right">${(i.precoVenda*i.quantidade).toFixed(2)}</td></tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                    <div class="cupom-divider"></div>
-                    <table class="cupom-table" style="font-weight: bold; font-size: 14px;">
-                        <tr><td>SUBTOTAL R$</td><td class="right">${d.total.toFixed(2)}</td></tr>
-                        ${temDesconto ? `<tr><td style="color:red">DESCONTO R$</td><td class="right" style="color:red">-${d.desconto.toFixed(2)}</td></tr>` : ''}
-                        <tr><td style="padding-top:5px; font-size:16px;">LÍQUIDO R$</td><td class="right" style="padding-top:5px; font-size:16px;">${d.totalFinal.toFixed(2)}</td></tr>
-                    </table>
-                    <div style="font-size: 11px; margin-top: 5px;">Pgto: ${d.formaPgto.replace('_',' ').toUpperCase()}</div>
-                    <div style="font-size: 11px;">Cliente: ${d.cliente.nome.toUpperCase()}</div>
-                `;
-                return templateTermico(cfg, d, htmlItens);
-            }
-            
-            // NOVO: Qualificação robusta das partes e dos dados do cliente conforme solicitado
-            const htmlContrato = `
-                <div style="text-align: center; margin-bottom: 2rem;">
-                    <h2 style="font-size: 14pt; font-weight: bold; text-transform: uppercase;">Instrumento Particular de Venda</h2>
-                    <p style="font-size: 10pt;">Título Executivo Extrajudicial</p>
-                </div>
-
-                <div class="clausula-title">DADOS DAS PARTES</div>
-                <div class="paragrafo">
-                    <strong>CREDOR:</strong> ${cfg.razaoSocial || 'EMPRESA'}, CNPJ: ${cfg.cnpj || '___'}, sede: ${cfg.endereco || '___'}.<br>
-                    <strong>DEVEDOR:</strong> ${d.cliente.nome || '___________'}, nacionalidade: ${d.cliente.nacionalidade || '___________'}, estado civil: ${d.cliente.estadoCivil || '___________'}, profissão: ${d.cliente.profissao || '___________'}, portador(a) do RG nº ${d.cliente.rg || '___________'} e inscrito(a) no CPF/CNPJ sob o nº ${d.cliente.documento || '___________'}, residente e domiciliado(a) na ${d.cliente.endereco || '_________________________________'}, contato: ${d.cliente.telefone || '___________'}, e-mail: ${d.cliente.email || '___________'}.
-                </div>
-
-                <div class="clausula-title">OBJETO E VALOR</div>
-                <div class="paragrafo">Aquisição dos itens abaixo, perfazendo o total bruto de <strong>${formatarMoeda(d.total)}</strong>${d.desconto > 0 ? `, com bonificação concedida de <strong>${formatarMoeda(d.desconto)}</strong>, resultando no saldo líquido de <strong>${formatarMoeda(d.totalFinal)}</strong>` : ''}.</div>
-                <table class="contrato-table">
-                    <thead><tr><th style="text-align:center">Qtd</th><th>Produto</th><th>Subtotal</th></tr></thead>
-                    <tbody>${d.itens.map(i=>`<tr><td style="text-align:center">${i.quantidade}</td><td>${i.nome}</td><td>${formatarMoeda(i.precoVenda*i.quantidade)}</td></tr>`).join('')}</tbody>
-                </table>
-
-                <div class="clausula-title">CONDIÇÕES DE PAGAMENTO (RECONHECIMENTO DE DÉBITO)</div>
-                <div class="paragrafo">O DEVEDOR confessa dever a quantia supra e compromete-se a pagar conforme cronograma:</div>
-                <table class="contrato-table" style="width: 70%; margin: 1rem auto;">
-                    <thead><tr><th style="text-align:center">Parcela</th><th>Vencimento</th><th>Valor (R$)</th></tr></thead>
-                    <tbody>${d.parcelas.map(p=>`<tr><td style="text-align:center">${p.numeroParcela}</td><td>${formatarDataBR(p.vencimento)}</td><td>${formatarMoeda(p.valor)}</td></tr>`).join('')}</tbody>
-                </table>
-
-                <div style="margin-top: 3rem; text-align: right; margin-bottom: 4rem;">${foro}, ${formatarDataExtenso(new Date(d.dataHora || new Date()))}.</div>
-
-                <div style="display: flex; justify-content: space-around; margin-top: 2rem;">
-                    <div style="width: 40%; text-align: center; border-top: 1px solid #000; padding-top: 5px;"><strong>${cfg.razaoSocial || 'CREDOR'}</strong><br><span style="font-size: 9pt;">CREDOR</span></div>
-                    <div style="width: 40%; text-align: center; border-top: 1px solid #000; padding-top: 5px;"><strong>${d.cliente.nome || 'DEVEDOR'}</strong><br><span style="font-size: 9pt;">DEVEDOR</span></div>
-                </div>
-            `;
-            return templateContrato(cfg, d, htmlContrato);
-        });
-
         const acionarPrint = () => window.print();
+
         const prepararEtiqueta = (p) => {
             impressao.dados = { tipo: 'etiqueta', p }; impressao.ativa = true;
             setTimeout(() => {
@@ -953,90 +1120,201 @@ createApp({
             impressao.ativa = true; setTimeout(() => acionarPrint(), 300);
         };
 
-        // Lógica de Venda Local Assíncrona
-        const finalizarVenda = () => {
-            const vendaId = gerarUUID();
-            const dataAtual = new Date().toISOString();
-            
-            // 1. Abater Estoque Localmente
-            pdv.carrinho.forEach(item => {
-                const p = db.produtos.find(x => x.id === item.id);
-                if(p) p.estoque -= item.quantidade;
-            });
+        // Templates HTML para Injeção
+        const templateTermico = (cfg, d, coreHtml) => `
+            <div style="text-align: center; margin-bottom: 5px;">
+                <strong>${cfg.razaoSocial || 'MERCADO LOCAL'}</strong><br>
+                CNPJ: ${cfg.cnpj || '___'}<br>
+                ${cfg.endereco || ''} - ${cfg.cidadeEStado || ''}<br>
+                Tel: ${cfg.telefone || ''}
+            </div>
+            <div class="cupom-divider"></div>
+            <div style="text-align: center; font-weight: bold; margin: 5px 0;">CUPOM NÃO FISCAL</div>
+            <div style="text-align: center; font-size: 11px; margin-bottom: 5px;">Data: ${formatarDataTime(d.dataHora)} - Doc: ${d.vId ? d.vId.substring(0,8).toUpperCase() : ''}</div>
+            <div class="cupom-divider"></div>
+            ${coreHtml}
+            <div class="cupom-divider"></div>
+            <div style="text-align: center; font-size: 11px; margin-top: 15px;">OBRIGADO PELA PREFERÊNCIA!</div>
+            <div style="text-align: center; font-size: 10px; margin-top: 5px;">Sistema PDV Mobile Offline</div>
+        `;
 
-            // 2. Criar Venda Localmente
-            const clienteIdRef = pdv.clienteId || 'Avulso';
-            const novaVenda = { id: vendaId, dataHora: dataAtual, clienteId: clienteIdRef, total: totalComDesconto.value, desconto: pdv.desconto, formaPagamento: pdv.formaPgto };
-            db.vendas.push(novaVenda);
-            
-            pdv.carrinho.forEach(item => {
-                db.itensVenda.push({ id: gerarUUID(), vendaId, produtoId: item.id, nomeProduto: item.nome, quantidade: item.quantidade, precoUnitario: item.precoVenda, subtotal: item.quantidade * item.precoVenda });
-            });
+        const templateContrato = (cfg, d, coreHtml) => `
+            <div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; font-size: 9pt;">
+                <strong>${cfg.razaoSocial || 'MERCADO LOCAL'}</strong> - CNPJ: ${cfg.cnpj || '___'}<br>
+                Ref. Documento: ${d.vId.substring(0,8).toUpperCase()}
+            </div>
+            ${coreHtml}
+        `;
 
-            // 3. Criar Parcelas Financeiras Localmente
-            const parcelasParaSync = [];
-            if (pdv.formaPgto === 'a_vista') {
-                const p = { id: gerarUUID(), vendaId, clienteId: clienteIdRef, numeroParcela: 'Única', vencimento: dataAtual, valorBase: novaVenda.total, valorAtualizado: novaVenda.total, status: 'PAGO', dataPagamento: dataAtual };
-                db.contasReceber.push(p); parcelasParaSync.push(p);
-            } else {
-                let saldo = novaVenda.total;
-                if (pdv.crediario.entrada > 0) {
-                    saldo -= pdv.crediario.entrada;
-                    const pEnt = { id: gerarUUID(), vendaId, clienteId: clienteIdRef, numeroParcela: 'Entrada', vencimento: dataAtual, valorBase: pdv.crediario.entrada, valorAtualizado: pdv.crediario.entrada, status: 'PAGO', dataPagamento: dataAtual };
-                    db.contasReceber.push(pEnt); parcelasParaSync.push(pEnt);
-                }
-                if (pdv.crediario.parcelas > 0 && saldo > 0) {
-                    const vBase = saldo / pdv.crediario.parcelas;
-                    for (let i = 1; i <= pdv.crediario.parcelas; i++) {
-                        let venc = new Date(dataAtual); venc.setDate(venc.getDate() + (30 * i));
-                        let p = { id: gerarUUID(), vendaId, clienteId: clienteIdRef, numeroParcela: `${i}/${pdv.crediario.parcelas}`, vencimento: venc.toISOString(), valorBase: vBase, valorAtualizado: vBase, status: 'PENDENTE', dataPagamento: '' };
-                        db.contasReceber.push(p); parcelasParaSync.push(p);
-                    }
-                }
+        const templateCarneBanco = (cfg, parcelaInfo) => {
+            return `
+            <div class="carne-item">
+                <div class="canhoto">
+                    <div class="carne-linha"><div class="carne-celula c-flex-grow"><span class="titulo-celula">Beneficiário</span><span class="valor-celula" style="font-size:10px; white-space: normal; line-height: 1.1;">${cfg.razaoSocial || 'EMPRESA'}</span></div></div>
+                    <div class="carne-linha"><div class="carne-celula c-flex-grow destaque-bg"><span class="titulo-celula">Vencimento</span><span class="valor-celula destaque-txt" style="text-align:left;">${formatarDataBR(parcelaInfo.vencimento)}</span></div></div>
+                    <div class="carne-linha"><div class="carne-celula c-flex-grow destaque-bg"><span class="titulo-celula">Nº Parcela</span><span class="valor-celula destaque-txt" style="text-align:left;">${parcelaInfo.numStr}</span></div></div>
+                    <div class="carne-linha"><div class="carne-celula c-flex-grow destaque-bg"><span class="titulo-celula">Valor (R$)</span><span class="valor-celula destaque-txt" style="text-align:left;">${formatarMoeda(parcelaInfo.valor)}</span></div></div>
+                    <div class="carne-linha"><div class="carne-celula c-flex-grow"><span class="titulo-celula">(-) Desconto</span><span class="valor-celula">&nbsp;</span></div></div>
+                    <div class="carne-linha"><div class="carne-celula c-flex-grow"><span class="titulo-celula">(+) Juros/Multa</span><span class="valor-celula">&nbsp;</span></div></div>
+                    <div class="carne-linha"><div class="carne-celula c-flex-grow"><span class="titulo-celula">(=) Valor Cobrado</span><span class="valor-celula">&nbsp;</span></div></div>
+                    <div class="rodape-canhoto"><div style="text-align:left; font-size: 10px; margin-bottom: 5px;">Recebedor: <br>Data: ___/___/______</div>Recibo do Beneficiário</div>
+                </div>
+                <div class="corpo">
+                    <div class="header-doc"><div class="banco-logo">${cfg.razaoSocial || 'EMPRESA'}</div><div class="banco-linha">RECIBO</div><div class="doc-tipo">CARNÊ DE PAGAMENTO DIRETO<br><span style="font-size:8px; font-weight:normal;">NÃO É BOLETO BANCÁRIO</span></div></div>
+                    <div class="carne-linha"><div class="carne-celula c-flex-grow"><span class="titulo-celula">Local de Pagamento</span><span class="valor-celula">Pagável diretamente na empresa ou via meios eletrônicos acordados.</span></div><div class="carne-celula c-w-fixed destaque-bg"><span class="titulo-celula">Vencimento</span><span class="valor-celula destaque-txt">${formatarDataBR(parcelaInfo.vencimento)}</span></div></div>
+                    <div class="carne-linha"><div class="carne-celula c-flex-grow"><span class="titulo-celula">Beneficiário</span><span class="valor-celula">${cfg.razaoSocial || 'EMPRESA'} - CNPJ/CPF: ${cfg.cnpj || '___'}</span></div><div class="carne-celula c-w-fixed destaque-bg"><span class="titulo-celula">Parcela / Nosso Número</span><span class="valor-celula destaque-txt">${parcelaInfo.numStr}</span></div></div>
+                    <div class="carne-linha">
+                        <div class="carne-celula" style="width: 20%;"><span class="titulo-celula">Data Documento</span><span class="valor-celula">${parcelaInfo.dataEmissao}</span></div>
+                        <div class="carne-celula" style="width: 20%;"><span class="titulo-celula">Nº Documento</span><span class="valor-celula">DOC-${parcelaInfo.idUnico}</span></div>
+                        <div class="carne-celula" style="width: 15%;"><span class="titulo-celula">Espécie Doc.</span><span class="valor-celula">RC</span></div>
+                        <div class="carne-celula" style="width: 15%;"><span class="titulo-celula">Aceite</span><span class="valor-celula">N</span></div>
+                        <div class="carne-celula c-flex-grow"><span class="titulo-celula">Data Processamento</span><span class="valor-celula">${parcelaInfo.dataEmissao}</span></div>
+                        <div class="carne-celula c-w-fixed destaque-bg"><span class="titulo-celula">Valor do Documento</span><span class="valor-celula destaque-txt">${formatarMoeda(parcelaInfo.valor)}</span></div>
+                    </div>
+                    <div class="area-instrucoes">
+                        <div class="instrucoes-texto">
+                            <span class="titulo-celula">Instruções de Responsabilidade do Beneficiário</span><br>
+                            - Pagamento referente à parcela ${parcelaInfo.numStr} do valor total de ${formatarMoeda(parcelaInfo.valorTotalVenda)}.<br>
+                            - <b>Após o vencimento:</b> Cobrar multa de ${cfg.multa || 2}% e juros de ${cfg.juros || 1}% ao mês.<br>
+                            - O não pagamento sujeita o devedor às penalidades da lei e proteção ao crédito.<br>
+                            - Contato: ${cfg.telefone || '___'}
+                        </div>
+                        <div class="coluna-valores">
+                            <div class="carne-celula"><span class="titulo-celula">(-) Desconto / Abatimentos</span><span class="valor-celula"></span></div>
+                            <div class="carne-celula"><span class="titulo-celula">(+) Outros Acréscimos</span><span class="valor-celula"></span></div>
+                            <div class="carne-celula"><span class="titulo-celula">(=) Valor Cobrado</span><span class="valor-celula"></span></div>
+                        </div>
+                    </div>
+                    <div class="carne-linha" style="border-bottom: none; border-top: 1px solid #000;">
+                        <div class="carne-celula c-flex-grow" style="border-right: none; padding-bottom: 2px;"><span class="titulo-celula">Pagador (Cliente)</span><span class="valor-celula">${parcelaInfo.clienteNome} - CPF/CNPJ: ${parcelaInfo.clienteDoc}</span></div>
+                    </div>
+                    <div class="carne-linha" style="border-bottom: none;">
+                        <div class="carne-celula c-flex-grow" style="border-right: none; padding-top: 0; min-height: auto;"><span class="titulo-celula" style="text-align: right; width: 100%; display: block;">Autenticação Mecânica / Recibo do Pagador</span></div>
+                    </div>
+                </div>
+            </div>`;
+        };
+
+        const conteudoImpressao = computed(() => {
+            if(!impressao.dados) return '';
+            const d = impressao.dados, cfg = db.configuracao;
+            
+            // 1. CARNÊ EXCLUSIVO (Aba Avulso)
+            if(d.tipo === 'carne') {
+                return d.parcelas.map(p => templateCarneBanco(cfg, p)).join('');
             }
+            
+            // 2. ETIQUETA
+            if(d.tipo === 'etiqueta') return `
+                <div style="text-align: center; border: 1px solid #000; padding: 5px;">
+                    <div style="font-weight: bold; font-size: 12px; margin-bottom: 2px;">${d.p.nome.toUpperCase()}</div>
+                    <div style="font-weight: bold; font-size: 18px; margin-bottom: 5px;">${formatarMoeda(d.p.precoVenda)}</div>
+                    <svg id="barcode-svg" style="width: 100%; height: 40px;"></svg>
+                </div>`;
+            
+            // 3. TÉRMICA (À Vista)
+            if(d.tipo === 'a_vista') {
+                const temDesconto = d.desconto > 0;
+                const htmlItens = `
+                    <table class="cupom-table">
+                        <thead><tr><th>ITEM</th><th class="center">QTDxUN</th><th class="right">TOTAL</th></tr></thead>
+                        <tbody>${d.itens.map(i=>`<tr><td colspan="3">${i.nome.toUpperCase()}</td></tr><tr><td></td><td class="center">${i.quantidade}x${i.precoVenda.toFixed(2)}</td><td class="right">${(i.precoVenda*i.quantidade).toFixed(2)}</td></tr>`).join('')}</tbody>
+                    </table>
+                    <div class="cupom-divider"></div>
+                    <table class="cupom-table" style="font-weight: bold; font-size: 14px;">
+                        <tr><td>SUBTOTAL R$</td><td class="right">${d.total.toFixed(2)}</td></tr>
+                        ${temDesconto ? `<tr><td style="color:red">DESCONTO R$</td><td class="right" style="color:red">-${d.desconto.toFixed(2)}</td></tr>` : ''}
+                        <tr><td style="padding-top:5px; font-size:16px;">LÍQUIDO R$</td><td class="right" style="padding-top:5px; font-size:16px;">${d.totalFinal.toFixed(2)}</td></tr>
+                    </table>
+                    <div style="font-size: 11px; margin-top: 5px;">Pgto: ${d.formaPgto.replace('_',' ').toUpperCase()}</div>
+                    <div style="font-size: 11px;">Cliente: ${d.cliente.nome.toUpperCase()}</div>
+                `;
+                return templateTermico(cfg, d, htmlItens);
+            }
+            
+            // 4. CONTRATO JURÍDICO (Ou Contrato + Carnê na mesma impressão)
+            if (d.tipo === 'crediario' || d.tipo === 'contrato_carne') {
+                const foro = cfg.cidadeEStado ? cfg.cidadeEStado.split('-')[0].trim() : '___________';
+                const htmlContratoInterno = `
+                    <div style="text-align: center; margin-bottom: 2rem;"><h2 style="font-size: 14pt; font-weight: bold; text-transform: uppercase;">Instrumento Particular de Venda</h2><p style="font-size: 10pt;">Título Executivo Extrajudicial</p></div>
+                    <div class="clausula-title">DADOS DAS PARTES</div>
+                    <div class="paragrafo">
+                        <strong>CREDOR:</strong> ${cfg.razaoSocial || 'EMPRESA'}, CNPJ: ${cfg.cnpj || '___'}, sede: ${cfg.endereco || '___'}.<br>
+                        <strong>DEVEDOR:</strong> ${d.cliente.nome || '___________'}, nacionalidade: ${d.cliente.nacionalidade || '___________'}, estado civil: ${d.cliente.estadoCivil || '___________'}, profissão: ${d.cliente.profissao || '___________'}, portador(a) do RG nº ${d.cliente.rg || '___________'} e inscrito(a) no CPF/CNPJ sob o nº ${d.cliente.documento || '___________'}, residente e domiciliado(a) na ${d.cliente.endereco || '_________________________________'}, contato: ${d.cliente.telefone || '___________'}, e-mail: ${d.cliente.email || '___________'}.
+                    </div>
+                    <div class="clausula-title">OBJETO E VALOR</div>
+                    <div class="paragrafo">Aquisição dos itens abaixo, perfazendo o total bruto de <strong>${formatarMoeda(d.total)}</strong>${d.desconto > 0 ? `, com bonificação concedida de <strong>${formatarMoeda(d.desconto)}</strong>, resultando no saldo líquido de <strong>${formatarMoeda(d.totalFinal)}</strong>` : ''}.</div>
+                    <table class="contrato-table"><thead><tr><th style="text-align:center">Qtd</th><th>Produto</th><th>Subtotal</th></tr></thead><tbody>${d.itens.map(i=>`<tr><td style="text-align:center">${i.quantidade}</td><td>${i.nome}</td><td>${formatarMoeda(i.precoVenda*i.quantidade)}</td></tr>`).join('')}</tbody></table>
+                    <div class="clausula-title">CONDIÇÕES DE PAGAMENTO E RECONHECIMENTO DE DÉBITO</div>
+                    <div class="paragrafo">O DEVEDOR confessa dever a quantia supra e compromete-se a pagar conforme cronograma:</div>
+                    <table class="contrato-table" style="width: 70%; margin: 1rem auto;"><thead><tr><th style="text-align:center">Parcela</th><th>Vencimento</th><th>Valor (R$)</th></tr></thead><tbody>${d.parcelas.map(p=>`<tr><td style="text-align:center">${p.numeroParcela}</td><td>${formatarDataBR(p.vencimento)}</td><td>${formatarMoeda(p.valor)}</td></tr>`).join('')}</tbody></table>
+                    <div style="margin-top: 3rem; text-align: right; margin-bottom: 3rem;">${foro}, ${formatarDataExtenso(new Date(d.dataHora || new Date()))}.</div>
+                    
+                    <!-- ASSINATURAS PRINCIPAIS -->
+                    <div style="display: flex; justify-content: space-around; margin-top: 2rem;">
+                        <div style="width: 40%; text-align: center; border-top: 1px solid #000; padding-top: 5px;"><strong>${cfg.razaoSocial || 'CREDOR'}</strong><br><span style="font-size: 9pt;">CREDOR</span></div>
+                        <div style="width: 40%; text-align: center; border-top: 1px solid #000; padding-top: 5px;"><strong>${d.cliente.nome || 'DEVEDOR'}</strong><br><span style="font-size: 9pt;">DEVEDOR</span></div>
+                    </div>
+                    
+                    <!-- TESTEMUNHAS (Ajuste solicitado) -->
+                    <div style="margin-top: 4rem; text-align: center; font-weight: bold; font-size: 10pt;">TESTEMUNHAS</div>
+                    <div style="display: flex; justify-content: space-around; margin-top: 3rem;">
+                        <div style="width: 40%; text-align: left; border-top: 1px solid #000; padding-top: 5px;">
+                            <span style="font-size: 9pt;">Nome: ____________________________________</span><br><br>
+                            <span style="font-size: 9pt;">CPF: _____________________________________</span>
+                        </div>
+                        <div style="width: 40%; text-align: left; border-top: 1px solid #000; padding-top: 5px;">
+                            <span style="font-size: 9pt;">Nome: ____________________________________</span><br><br>
+                            <span style="font-size: 9pt;">CPF: _____________________________________</span>
+                        </div>
+                    </div>
+                `;
+                
+                const contratoCompleto = templateContrato(cfg, d, htmlContratoInterno);
 
-            // 4. Salvar tudo local e mandar pra Fila
-            LocalDB.salvar();
-            SyncService.enqueue({
-                type: 'VENDA',
-                payload: { carrinho: pdv.carrinho, total: totalCarrinho.value, desconto: pdv.desconto, clienteId: pdv.clienteId, formaPagamento: pdv.formaPgto, crediario: pdv.crediario, vendaId, dataAtual, parcelasGeradas: parcelasParaSync }
+                // SE FOI FINALIZADA A VENDA A PRAZO (Imprime Contrato e os Carnês juntos)
+                if (d.tipo === 'contrato_carne') {
+                    const dataEmissao = new Date(d.dataHora).toLocaleDateString('pt-BR');
+                    const qtdValidas = d.parcelas.filter(x => x.numeroParcela !== 'Entrada').length;
+                    
+                    const carnesHtml = d.parcelas.map((c, index) => {
+                        const isEntrada = c.numeroParcela === 'Entrada';
+                        let strNum = c.numeroParcela;
+                        if (!strNum.includes('/') && !isEntrada) { strNum = `${index + (d.parcelas.find(x => x.numeroParcela==='Entrada') ? 0 : 1)}/${qtdValidas}`; }
+                        
+                        const pInfo = {
+                            numStr: strNum, vencimento: c.vencimento, valor: c.valor, valorTotalVenda: d.totalFinal, dataEmissao: dataEmissao,
+                            idUnico: d.vId.substring(0,6).toUpperCase(), clienteNome: d.cliente.nome, clienteDoc: d.cliente.documento || '---'
+                        };
+                        return templateCarneBanco(cfg, pInfo);
+                    }).join('');
+
+                    // Retorna HTML combinado usando quebra de página
+                    return `
+                        <div class="documento-juridico">${contratoCompleto}</div>
+                        <div style="page-break-before: always; height: 1px;"></div>
+                        <div class="carne-wrapper">${carnesHtml}</div>
+                    `;
+                }
+
+                // Apenas contrato (Botão "Imprimir Contrato Térmico/A4" do menu Financeiro)
+                return `<div class="documento-juridico">${contratoCompleto}</div>`;
+            }
+        });
+
+        // =========================================================================
+        // STARTUP DO APLICATIVO
+        // =========================================================================
+        onMounted(() => {
+            LocalDB.carregar();
+            SyncService.atualizarSize();
+            if (isOnline.value) { SyncService.pull(false).then(() => SyncService.processQueue(false)); }
+            
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'F2') { e.preventDefault(); state.tela = 'pdv'; }
+                if (e.key === 'F3' && state.tela === 'pdv' && podeFinalizar.value) { e.preventDefault(); pdv.modalCheckout = true; }
             });
-
-            tocarSomCaixa();
-
-            const cli = db.clientes.find(c => c.id === pdv.clienteId) || {nome:'AVULSO', documento: ''};
-            
-            // Mapeia para impressão baseando nos dados atuais (antes de limpar)
-            impressao.dados = { 
-                tipo: pdv.formaPgto === 'parcelado_loja' ? 'crediario' : 'a_vista', 
-                vId: vendaId, 
-                dataHora: dataAtual, 
-                cliente: cli, 
-                itens: [...pdv.carrinho], 
-                total: totalCarrinho.value, 
-                desconto: pdv.desconto, 
-                totalFinal: totalComDesconto.value, 
-                parcelas: parcelasParaSync.map(p => ({ numeroParcela: p.numeroParcela, vencimento: p.vencimento, valor: p.valorAtualizado })), 
-                formaPgto: pdv.formaPgto 
-            };
-            
-            impressao.ativa = true;
-            Object.assign(pdv, { carrinho:[], clienteId:'', formaPgto:'a_vista', modalCheckout:false, desconto: 0 });
-            
-            setTimeout(() => acionarPrint(), 500); 
-        };
-
-        let html5QrCode = null;
-        const lerCodigoCamera = async (e) => {
-            const file = e.target.files[0]; if(!file) return;
-            state.loading = true; state.loadingMsg = 'Câmera...';
-            try {
-                if(!html5QrCode) html5QrCode = new Html5Qrcode("reader-hidden");
-                const code = await html5QrCode.scanFile(file, true);
-                pdv.busca = code; buscarExato();
-            } catch { swal('Erro', 'Código ilegível na foto.', 'warning'); } 
-            finally { state.loading = false; e.target.value = ''; }
-        };
+        });
 
         return { 
             state, db, menusDesktop, menusMobile, tituloMobile, viewsCrud, modal, statusCards, statsCards, ultimasVendas, formatarMoeda, formatarDataBR, formatarDataTime, getNomeCliente, isOnline,
@@ -1045,18 +1323,17 @@ createApp({
             forcarSync: async () => { 
                 if (!isOnline.value) return swal('Offline', 'Conecte-se à internet primeiro.', 'info');
                 try {
-                    await SyncService.processQueue(true); 
-                    await SyncService.pull(true); 
-                    if (state.syncQueueSize === 0) {
-                        swal('Sucesso', 'Seu PDV está 100% sincronizado com a nuvem.', 'success');
-                    }
-                } catch(e) {
-                    swal('Falha na Sincronização', e.message, 'error');
-                }
+                    await SyncService.processQueue(true); await SyncService.pull(true); 
+                    if (state.syncQueueSize === 0) swal('Sucesso', 'Seu PDV está 100% sincronizado com a nuvem.', 'success');
+                } catch(e) { swal('Falha na Sincronização', e.message, 'error'); }
             },
 
             estadoFin, filtrosFinanceiros, contasAgrupadas, toggleExpand, isExpanded, toggleExpandVenda, isVendaExpanded, statusStyle, baixarParcela, reimprimirContrato, filtrarFinanceiro: f => { estadoFin.filtro = f; state.tela = 'financeiro'; },
             pdv, opcoesPagamento, produtosFiltrados, totalCarrinho, totalComDesconto, podeFinalizar, buscarExato, addCarrinho, alterarQtd, removerDoCarrinho, finalizarVenda, lerCodigoCamera,
+            
+            // CARNÊ (Avulso e Vinculado)
+            estadoCarne, previaCarne, gerarCarneAvulso, imprimirCarneDaVenda, importarClienteCarne,
+            
             impressao, conteudoImpressao, acionarPrint, prepararEtiqueta
         };
     }
