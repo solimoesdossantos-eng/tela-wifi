@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Carnês Pro - Padrão Bancário</title>
+    <style>
+        :root {
+            --primary: #1a252f;
+            --secondary: #2c3e50;
+            --accent: #2980b9;
+            --danger: #c0392b;
+            --border: #000;
+            --bg-highlight: #e8e8e8;
+            --bg-body: #ecf0f1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-body);
+            color: #333;
+        }
+
+        /* --- UI do Sistema --- */
+        .no-print {
+            max-width: 900px;
+            margin: 0 auto 30px auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        h2, h3 { color: var(--primary); margin-top: 0; }
+
+        .section-box {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .full-width { grid-column: 1 / -1; }
+
+        label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 13px; color: var(--secondary); }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .btn-main { background: var(--accent); color: white; width: 100%; font-size: 16px; margin-top: 10px; }
+        .btn-save { background: var(--primary); color: white; }
+        .btn-backup { background: #8e44ad; color: white; }
+        .btn-restore { background: #f39c12; color: white; }
+
+        button:hover { opacity: 0.9; }
+
+        /* --- Estilos do Carnê (Padrão Bancário) --- */
+        #carne-container {
+            width: 210mm;
+            margin: 0 auto;
+            background: #fff;
+        }
+
+        .carne-item {
+            display: flex;
+            border: 1px solid var(--border);
+            margin-bottom: 25px;
+            background: #fff;
+            page-break-inside: avoid;
+            font-family: Arial, Helvetica, sans-serif;
+            /* FIXAÇÃO DE ALTURA PARA GARANTIR 3 POR PÁGINA */
+            height: 88mm;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        /* Estrutura Canhoto e Corpo */
+        .canhoto {
+            width: 55mm;
+            border-right: 2px dashed #666;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .corpo {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid transparent; 
+        }
+
+        /* Células estilo Boleto */
+        .linha {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            width: 100%;
+        }
+
+        .linha:last-child {
+            border-bottom: none;
+        }
+
+        .celula {
+            border-right: 1px solid var(--border);
+            padding: 2px 4px; 
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 24px;
+        }
+
+        .celula:last-child {
+            border-right: none;
+        }
+
+        .flex-grow { flex: 1; }
+        .w-fixed { width: 140px; min-width: 140px; }
+
+        .titulo-celula {
+            font-size: 9px;
+            color: #333;
+            text-transform: uppercase;
+        }
+
+        .valor-celula {
+            font-size: 12px;
+            font-weight: 500;
+            color: #000;
+            margin-top: 2px;
+        }
+
+        /* --- DESTAQUES SOLICITADOS --- */
+        .destaque-bg {
+            background-color: var(--bg-highlight) !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .destaque-txt {
+            font-size: 15px !important;
+            font-weight: 900 !important;
+            text-align: right;
+            color: #000;
+        }
+
+        /* Cabeçalho do Documento */
+        .header-doc {
+            display: flex;
+            align-items: center;
+            border-bottom: 2px solid var(--border);
+            padding: 4px 8px; 
+            min-height: 35px;
+        }
+        
+        .banco-logo {
+            font-size: 15px; 
+            font-weight: 900;
+            margin-right: 15px;
+            letter-spacing: -0.5px;
+            text-transform: uppercase;
+            max-width: 45%; 
+            line-height: 1.1;
+            word-wrap: break-word;
+        }
+
+        .banco-linha {
+            border-left: 2px solid var(--border);
+            border-right: 2px solid var(--border);
+            padding: 0 10px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .doc-tipo {
+            font-size: 12px;
+            font-weight: bold;
+            flex: 1;
+            text-align: right;
+            line-height: 1.1;
+        }
+
+        /* Área de Instruções e Valores */
+        .area-instrucoes {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            flex: 1; 
+        }
+
+        .instrucoes-texto {
+            flex: 1;
+            padding: 4px 6px;
+            border-right: 1px solid var(--border);
+            font-size: 10px; 
+            line-height: 1.4;
+        }
+
+        .coluna-valores {
+            width: 140px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .coluna-valores .celula {
+            border-right: none;
+            border-bottom: 1px solid var(--border);
+            min-height: 26px; 
+            flex: 1;
+        }
+        
+        .coluna-valores .celula:last-child {
+            border-bottom: none;
+        }
+
+        .rodape-canhoto {
+            padding: 4px;
+            font-size: 9px;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            margin-top: auto;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; padding: 0; }
+            #carne-container { width: 100%; margin: 0; }
+            
+            /* REGRAS RÍGIDAS DE IMPRESSÃO - 3 POR FOLHA */
+            @page { 
+                margin: 5mm; 
+                size: A4 portrait;
+            }
+            
+            .carne-item { 
+                margin-bottom: 4mm; 
+                height: 88mm;       
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print">
+        <h2>Gerador de Carnês Pro - Edição Estilo Bancário</h2>
+        
+        <div class="section-box">
+            <h3>1. Configurações da Empresa e Backup</h3>
+            <div class="form-grid">
+                <div class="full-width">
+                    <label>Nome da Empresa / Razão Social</label>
+                    <input type="text" id="cfg_emp_nome" value="Solimoes e Souza Assessoria Ltda">
+                </div>
+                <div>
+                    <label>CNPJ / CPF</label>
+                    <input type="text" id="cfg_emp_doc" value="64.159.599/0001-93" oninput="maskCPFCNPJ(event)" maxlength="18">
+                </div>
+                <div>
+                    <label>Telefones / WhatsApp</label>
+                    <input type="text" id="cfg_emp_tel" value="(92) 99321-2295 / (92) 99310-9092" oninput="maskPhone(event)">
+                </div>
+                <div>
+                    <label>Multa por Atraso (%)</label>
+                    <input type="number" id="cfg_multa" step="0.01" value="2.00">
+                </div>
+                <div>
+                    <label>Juros Mensal (%)</label>
+                    <input type="number" id="cfg_juros" step="0.01" value="1.00">
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn-save" onclick="salvarConfiguracoes()">Salvar Configurações</button>
+                <button class="btn-backup" onclick="exportarBackup()">Exportar Backup (JSON)</button>
+                <button class="btn-restore" onclick="document.getElementById('input-backup').click()">Importar Backup</button>
+                <input type="file" id="input-backup" style="display:none" onchange="importarBackup(event)">
+            </div>
+        </div>
+
+        <div class="section-box">
+            <h3>2. Dados do Cliente e Parcelamento</h3>
+            <div class="form-grid">
+                <div class="full-width">
+                    <label>Nome Completo do Cliente</label>
+                    <input type="text" id="cli_nome">
+                </div>
+                <div>
+                    <label>CPF/CNPJ do Cliente</label>
+                    <input type="text" id="cli_doc" oninput="maskCPFCNPJ(event)" maxlength="18">
+                </div>
+                <div>
+                    <label>Valor Total da Venda (R$)</label>
+                    <input type="number" id="valor_total" step="0.01" oninput="calcularPrevia()">
+                </div>
+                <div>
+                    <label>Quantidade de Parcelas</label>
+                    <input type="number" id="qtd_parcelas" value="1" min="1" oninput="calcularPrevia()">
+                </div>
+                <div>
+                    <label>Vencimento 1ª Parcela</label>
+                    <input type="date" id="data_vencimento">
+                </div>
+                <div id="previa_calculo" style="grid-column: span 2; padding-top: 10px; font-weight: bold; color: var(--accent);">
+                    Prévia: 0 parcelas de R$ 0,00
+                </div>
+            </div>
+            <button class="btn-main" onclick="gerarCarne()">GERAR E IMPRIMIR CARNÊS</button>
+        </div>
+    </div>
+
+    <div id="carne-container"></div>
+
+    <script>
+        // --- FUNÇÕES DE MÁSCARAS ---
+        const maskCPFCNPJ = (e) => {
+            let val = e.target.value.replace(/\D/g, "");
+            if (val.length <= 11) {
+                // Máscara de CPF
+                val = val.replace(/(\d{3})(\d)/, "$1.$2");
+                val = val.replace(/(\d{3})(\d)/, "$1.$2");
+                val = val.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+            } else {
+                // Máscara de CNPJ
+                val = val.replace(/^(\d{2})(\d)/, "$1.$2");
+                val = val.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+                val = val.replace(/\.(\d{3})(\d)/, ".$1/$2");
+                val = val.replace(/(\d{4})(\d)/, "$1-$2");
+            }
+            e.target.value = val.substring(0, 18);
+        };
+
+        const maskPhone = (e) => {
+            let val = e.target.value.replace(/\D/g, "");
+            if (val.length === 0) {
+                e.target.value = "";
+                return;
+            }
+            
+            let res = "";
+            
+            // Lógica para formatar o Primeiro Telefone
+            let p1 = val.substring(0, 11);
+            if (p1.length <= 2) {
+                res = p1;
+            } else if (p1.length <= 6) {
+                res = `(${p1.substring(0,2)}) ${p1.substring(2)}`;
+            } else if (p1.length <= 10) {
+                res = `(${p1.substring(0,2)}) ${p1.substring(2,6)}-${p1.substring(6)}`;
+            } else {
+                res = `(${p1.substring(0,2)}) ${p1.substring(2,7)}-${p1.substring(7,11)}`;
+            }
+
+            // Lógica para formatar um Segundo Telefone (se digitado mais de 11 números)
+            if (val.length > 11) {
+                let p2 = val.substring(11, 22);
+                res += " / ";
+                if (p2.length <= 2) {
+                    res += p2;
+                } else if (p2.length <= 6) {
+                    res += `(${p2.substring(0,2)}) ${p2.substring(2)}`;
+                } else if (p2.length <= 10) {
+                    res += `(${p2.substring(0,2)}) ${p2.substring(2,6)}-${p2.substring(6)}`;
+                } else {
+                    res += `(${p2.substring(0,2)}) ${p2.substring(2,7)}-${p2.substring(7,11)}`;
+                }
+            }
+            e.target.value = res;
+        };
+
+
+        // --- INICIALIZAÇÃO ---
+        window.onload = () => {
+            const salvas = localStorage.getItem('carne_config_v7');
+            if (salvas) {
+                const cfg = JSON.parse(salvas);
+                if(cfg.nome) document.getElementById('cfg_emp_nome').value = cfg.nome;
+                if(cfg.doc) document.getElementById('cfg_emp_doc').value = cfg.doc;
+                if(cfg.tel) document.getElementById('cfg_emp_tel').value = cfg.tel;
+                if(cfg.multa) document.getElementById('cfg_multa').value = cfg.multa;
+                if(cfg.juros) document.getElementById('cfg_juros').value = cfg.juros;
+            }
+        };
+
+        function salvarConfiguracoes() {
+            const config = {
+                nome: document.getElementById('cfg_emp_nome').value,
+                doc: document.getElementById('cfg_emp_doc').value,
+                tel: document.getElementById('cfg_emp_tel').value,
+                multa: document.getElementById('cfg_multa').value,
+                juros: document.getElementById('cfg_juros').value
+            };
+            localStorage.setItem('carne_config_v7', JSON.stringify(config));
+            alert("Configurações da empresa salvas com sucesso!");
+        }
+
+        function calcularPrevia() {
+            const total = parseFloat(document.getElementById('valor_total').value) || 0;
+            const qtd = parseInt(document.getElementById('qtd_parcelas').value) || 1;
+            if(total > 0) {
+                const valor = (total / qtd).toFixed(2);
+                document.getElementById('previa_calculo').innerText = `Prévia: ${qtd} parcelas de R$ ${valor.replace('.',',')}`;
+            }
+        }
+
+        function formatarMoeda(valor) {
+            return valor.toLocaleString('pt-br', { style: 'currency', currency: 'BRL' });
+        }
+
+        function gerarCarne() {
+            const container = document.getElementById('carne-container');
+            container.innerHTML = '';
+
+            // O script lê DIRETAMENTE da tela (DOM)
+            const config = {
+                nome: document.getElementById('cfg_emp_nome').value.trim(),
+                doc: document.getElementById('cfg_emp_doc').value.trim(),
+                tel: document.getElementById('cfg_emp_tel').value.trim(),
+                multa: document.getElementById('cfg_multa').value,
+                juros: document.getElementById('cfg_juros').value
+            };
+
+            const venda = {
+                cliente: document.getElementById('cli_nome').value.trim(),
+                cli_doc: document.getElementById('cli_doc').value.trim(),
+                total: parseFloat(document.getElementById('valor_total').value),
+                qtd: parseInt(document.getElementById('qtd_parcelas').value),
+                venc: document.getElementById('data_vencimento').value
+            };
+
+            if (!venda.total || !venda.venc || !config.nome) {
+                alert("Certifique-se de preencher os dados da empresa, valor total da venda e a data de vencimento.");
+                return;
+            }
+
+            const valorBase = Math.floor((venda.total / venda.qtd) * 100) / 100;
+            const resto = parseFloat((venda.total - (valorBase * venda.qtd)).toFixed(2));
+            const dataAtual = new Date().toLocaleDateString('pt-br');
+
+            for (let i = 1; i <= venda.qtd; i++) {
+                let vFinal = (i === venda.qtd) ? (valorBase + resto) : valorBase;
+                
+                let d = new Date(venda.venc + 'T00:00:00');
+                d.setMonth(d.getMonth() + (i - 1));
+                const dataVencFormatada = d.toLocaleDateString('pt-br');
+
+                const html = `
+                <div class="carne-item">
+                    
+                    <!-- ================= CANHOTO ================= -->
+                    <div class="canhoto">
+                        <div class="linha">
+                            <div class="celula flex-grow">
+                                <span class="titulo-celula">Beneficiário</span>
+                                <span class="valor-celula" style="font-size:10px; white-space: normal; word-wrap: break-word; line-height: 1.1;">${config.nome}</span>
+                            </div>
+                        </div>
+                        <div class="linha">
+                            <div class="celula flex-grow destaque-bg">
+                                <span class="titulo-celula">Vencimento</span>
+                                <span class="valor-celula destaque-txt" style="text-align:left;">${dataVencFormatada}</span>
+                            </div>
+                        </div>
+                        <div class="linha">
+                            <div class="celula flex-grow destaque-bg">
+                                <span class="titulo-celula">Nº Parcela</span>
+                                <span class="valor-celula destaque-txt" style="text-align:left;">${i} / ${venda.qtd}</span>
+                            </div>
+                        </div>
+                        <div class="linha">
+                            <div class="celula flex-grow destaque-bg">
+                                <span class="titulo-celula">Valor (R$)</span>
+                                <span class="valor-celula destaque-txt" style="text-align:left;">${formatarMoeda(vFinal)}</span>
+                            </div>
+                        </div>
+                        <div class="linha">
+                            <div class="celula flex-grow">
+                                <span class="titulo-celula">(-) Desconto / Abatimento</span>
+                                <span class="valor-celula">&nbsp;</span>
+                            </div>
+                        </div>
+                        <div class="linha">
+                            <div class="celula flex-grow">
+                                <span class="titulo-celula">(+) Juros / Multa</span>
+                                <span class="valor-celula">&nbsp;</span>
+                            </div>
+                        </div>
+                        <div class="linha">
+                            <div class="celula flex-grow">
+                                <span class="titulo-celula">(=) Valor Cobrado</span>
+                                <span class="valor-celula">&nbsp;</span>
+                            </div>
+                        </div>
+                        
+                        <div class="rodape-canhoto">
+                            <div style="text-align:left; font-size: 10px; margin-bottom: 5px;">
+                                Recebedor: <br>
+                                Data: ___/___/______
+                            </div>
+                            Recibo do Beneficiário
+                        </div>
+                    </div>
+
+                    <!-- ================= CORPO PRINCIPAL ================= -->
+                    <div class="corpo">
+                        
+                        <!-- Cabeçalho Estilo Banco -->
+                        <div class="header-doc">
+                            <div class="banco-logo">${config.nome}</div>
+                            <div class="banco-linha">RECIBO</div>
+                            <div class="doc-tipo">CARNÊ DE PAGAMENTO DIRETO<br><span style="font-size:8px; font-weight:normal;">NÃO É BOLETO BANCÁRIO</span></div>
+                        </div>
+
+                        <!-- Linha 1 -->
+                        <div class="linha">
+                            <div class="celula flex-grow">
+                                <span class="titulo-celula">Local de Pagamento</span>
+                                <span class="valor-celula">Pagável diretamente na empresa ou via PIX/Transferência acordada.</span>
+                            </div>
+                            <div class="celula w-fixed destaque-bg">
+                                <span class="titulo-celula">Vencimento</span>
+                                <span class="valor-celula destaque-txt">${dataVencFormatada}</span>
+                            </div>
+                        </div>
+
+                        <!-- Linha 2 -->
+                        <div class="linha">
+                            <div class="celula flex-grow">
+                                <span class="titulo-celula">Beneficiário</span>
+                                <span class="valor-celula">${config.nome} - CNPJ/CPF: ${config.doc}</span>
+                            </div>
+                            <div class="celula w-fixed destaque-bg">
+                                <span class="titulo-celula">Parcela / Nosso Número</span>
+                                <span class="valor-celula destaque-txt">${i} / ${venda.qtd}</span>
+                            </div>
+                        </div>
+
+                        <!-- Linha 3 -->
+                        <div class="linha">
+                            <div class="celula" style="width: 20%;">
+                                <span class="titulo-celula">Data Documento</span>
+                                <span class="valor-celula">${dataAtual}</span>
+                            </div>
+                            <div class="celula" style="width: 20%;">
+                                <span class="titulo-celula">Nº Documento</span>
+                                <span class="valor-celula">CARNÊ-${i}</span>
+                            </div>
+                            <div class="celula" style="width: 15%;">
+                                <span class="titulo-celula">Espécie Doc.</span>
+                                <span class="valor-celula">RC</span>
+                            </div>
+                            <div class="celula" style="width: 15%;">
+                                <span class="titulo-celula">Aceite</span>
+                                <span class="valor-celula">N</span>
+                            </div>
+                            <div class="celula flex-grow">
+                                <span class="titulo-celula">Data Processamento</span>
+                                <span class="valor-celula">${dataAtual}</span>
+                            </div>
+                            <div class="celula w-fixed destaque-bg">
+                                <span class="titulo-celula">Valor do Documento</span>
+                                <span class="valor-celula destaque-txt">${formatarMoeda(vFinal)}</span>
+                            </div>
+                        </div>
+
+                        <!-- Área de Instruções (Esquerda) e Valores (Direita) -->
+                        <div class="area-instrucoes">
+                            <div class="instrucoes-texto">
+                                <span class="titulo-celula">Instruções de Responsabilidade do Beneficiário</span><br>
+                                - Pagamento referente à parcela ${i} de ${venda.qtd} do valor total de ${formatarMoeda(venda.total)}.<br>
+                                - <b>Após o vencimento:</b> Cobrar multa de ${config.multa}% e juros de ${config.juros}% ao mês.<br>
+                                - O não pagamento desta obrigação sujeita o devedor às penalidades da lei e registro nos órgãos de proteção ao crédito.<br>
+                                - Contato: ${config.tel}
+                            </div>
+                            <div class="coluna-valores">
+                                <div class="celula">
+                                    <span class="titulo-celula">(-) Desconto / Abatimentos</span>
+                                    <span class="valor-celula"></span>
+                                </div>
+                                <div class="celula">
+                                    <span class="titulo-celula">(+) Outros Acréscimos</span>
+                                    <span class="valor-celula"></span>
+                                </div>
+                                <div class="celula">
+                                    <span class="titulo-celula">(=) Valor Cobrado</span>
+                                    <span class="valor-celula"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pagador -->
+                        <div class="linha" style="border-bottom: none; border-top: 1px solid var(--border);">
+                            <div class="celula flex-grow" style="border-right: none; padding-bottom: 2px;">
+                                <span class="titulo-celula">Pagador (Cliente)</span>
+                                <span class="valor-celula">${venda.cliente} - CPF/CNPJ: ${venda.cli_doc}</span>
+                            </div>
+                        </div>
+                        <div class="linha" style="border-bottom: none;">
+                            <div class="celula flex-grow" style="border-right: none; padding-top: 0; min-height: auto;">
+                                <span class="titulo-celula" style="text-align: right; width: 100%; display: block;">
+                                    Autenticação Mecânica / Recibo do Pagador
+                                </span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>`;
+                container.innerHTML += html;
+            }
+            window.print();
+        }
+
+        // Funções de Backup
+        function exportarBackup() {
+            const data = localStorage.getItem('carne_config_v7');
+            if (!data) return alert("Não há dados para exportar.");
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `backup_carne_empresa_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+        }
+
+        function importarBackup(event) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    localStorage.setItem('carne_config_v7', JSON.stringify(json));
+                    location.reload();
+                } catch (err) {
+                    alert("Erro ao importar arquivo de backup.");
+                }
+            };
+            reader.readAsText(event.target.files[0]);
+        }
+    </script>
+</body>
+</html>
